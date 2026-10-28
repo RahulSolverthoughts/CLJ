@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LegalXML — @(ViewData["Title"] ?? "User management")</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F4F3F0;--sf:#FFFFFF;--s2:#F8F7F5;--s3:#F0EEE9;
+  --bd:#E2E0DB;--bds:#C8C5BE;
+  --tp:#1A1A18;--ts:#5C5B57;--tm:#9C9A95;
+  --ta:#185FA5;--bga:#E6F1FB;--bda:#85B7EB;
+  --tg:#3B6D11;--bgg:#EAF3DE;--bdg:#97C459;
+  --tw:#854F0B;--bgw:#FAEEDA;--bdw:#EF9F27;
+  --tr:#A32D2D;--bgr:#FCEBEB;--bdr:#F09595;
+  --tpr:#3C3489;--bgpr:#EEEDFE;--bdpr:#AFA9EC;
+  --sw:224px;--th:52px;--r:6px;
+  --font:'Inter',system-ui,sans-serif
+}
+@@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+body{font-family:var(--font);background:var(--bg);color:var(--tp);font-size:13px;line-height:1.5;min-height:100vh}
+.shell{display:flex;height:100vh;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sw);flex-shrink:0;background:var(--sf);border-right:0.5px solid var(--bd);display:flex;flex-direction:column}
+.sb-logo{height:var(--th);display:flex;align-items:center;padding:0 14px;border-bottom:0.5px solid var(--bd);gap:8px;flex-shrink:0}
+.logo-mark{width:26px;height:26px;background:var(--tp);border-radius:5px;display:flex;align-items:center;justify-content:center}
+.logo-mark span{color:#fff;font-size:11px;font-weight:700}
+.logo-name{font-size:13px;font-weight:600}
+.logo-sub{font-size:10px;color:var(--tm)}
+.nav-sec{padding:10px 10px 3px;font-size:10px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.06em}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);margin:1px 6px;cursor:pointer;font-size:12.5px;color:var(--ts);user-select:none;text-decoration:none}
+.nav-item:hover{background:var(--s2)}
+.nav-item.active{background:var(--bga);color:var(--ta);font-weight:500}
+.nav-sub{margin-left:6px}
+.nav-sub .nav-item{font-size:11.5px;padding:5px 10px;margin:0 6px 0 16px}
+.nav-sub .nav-item.active{background:var(--bga);color:var(--ta)}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px}
+.nb-w{background:var(--bgw);color:var(--tw)}
+.nb-d{background:var(--bgr);color:var(--tr)}
+.nb-s{background:var(--bgg);color:var(--tg)}
+.sb-footer{margin-top:auto;padding:10px 12px;border-top:0.5px solid var(--bd)}
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.av-pu{background:var(--bgpr);color:var(--tpr)}
+.av-gr{background:var(--bgg);color:var(--tg)}
+.av-bl{background:var(--bga);color:var(--ta)}
+.av-am{background:var(--bgw);color:var(--tw)}
+.av-co{background:var(--bgr);color:var(--tr)}
+
+/* TOPBAR */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--th);background:var(--sf);border-bottom:0.5px solid var(--bd);display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0;position:relative}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.icon-btn{width:30px;height:30px;border-radius:var(--r);border:0.5px solid var(--bd);background:var(--sf);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--ts);position:relative}
+.ndot{width:6px;height:6px;border-radius:50%;background:var(--tr);position:absolute;top:5px;right:5px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--r);border:0.5px solid var(--bds);background:var(--sf);font-size:12px;cursor:pointer;color:var(--tp);font-family:var(--font);white-space:nowrap;transition:background .12s;text-decoration:none}
+.btn:hover{background:var(--s2)}
+.btn-primary{background:var(--tp);color:#fff;border-color:var(--tp)}
+.btn-primary:hover{background:#2e2e2c}
+.btn-accent{background:var(--ta);color:#fff;border-color:var(--ta)}
+.btn-accent:hover{background:#1450a0}
+.btn-danger{border-color:var(--bdr);color:var(--tr)}
+.btn-danger:hover{background:var(--bgr)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-xs{padding:3px 8px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+
+/* TABS */
+.tabs{display:flex;border-bottom:0.5px solid var(--bd);background:var(--sf);padding:0 20px;flex-shrink:0;overflow-x:auto}
+.tab{padding:10px 15px;font-size:12px;font-weight:500;color:var(--ts);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-0.5px;white-space:nowrap;display:flex;align-items:center;gap:6px;text-decoration:none}
+.tab:hover{color:var(--tp)}
+.tab.active{color:var(--ta);border-bottom-color:var(--ta)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:18px 20px}
+.sec-div{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--tm);margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+.sec-div::after{content:'';flex:1;height:.5px;background:var(--bd)}
+
+/* CARD */
+.card{background:var(--sf);border:0.5px solid var(--bd);border-radius:8px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:0.5px solid var(--bd)}
+.card-title{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.card-body{padding:14px 16px}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:2px 7px;border-radius:99px;font-weight:500;white-space:nowrap}
+.b-s{background:var(--bgg);color:var(--tg);border:.5px solid var(--bdg)}
+.b-w{background:var(--bgw);color:var(--tw);border:.5px solid var(--bdw)}
+.b-d{background:var(--bgr);color:var(--tr);border:.5px solid var(--bdr)}
+.b-a{background:var(--bga);color:var(--ta);border:.5px solid var(--bda)}
+.b-p{background:var(--bgpr);color:var(--tpr);border:.5px solid var(--bdpr)}
+.b-n{background:var(--s2);color:var(--ts);border:.5px solid var(--bd)}
+
+/* TABLES */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;color:var(--tm);font-weight:500;padding:8px 10px;border-bottom:.5px solid var(--bd);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;background:var(--s2);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:.5px solid var(--bd);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--s2)}
+.tbl tr.selected td{background:var(--bga)}
+
+/* FORM */
+.form-row{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.form-label .req{color:var(--tr);font-size:10px}
+.form-input,.form-select,.form-textarea{width:100%;padding:7px 10px;border-radius:var(--r);border:.5px solid var(--bds);background:var(--s2);font-size:12px;color:var(--tp);font-family:var(--font);outline:none;transition:border-color .15s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--ta);background:#fff}
+.form-textarea{min-height:72px;resize:vertical}
+.form-hint{font-size:10.5px;color:var(--tm);margin-top:4px}
+.form-section{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tm);padding:10px 0 8px;border-bottom:.5px solid var(--bd);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+
+/* TOGGLE */
+.toggle{width:34px;height:18px;border-radius:99px;cursor:pointer;position:relative;flex-shrink:0;transition:background .2s}
+.toggle.on{background:var(--ta)}
+.toggle.off{background:var(--bds)}
+.toggle-knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left .2s}
+.toggle.on .toggle-knob{left:18px}
+.toggle.off .toggle-knob{left:2px}
+
+/* PERMISSION MATRIX */
+.perm-matrix{width:100%;border-collapse:collapse;font-size:11.5px}
+.perm-matrix th{padding:8px 10px;font-size:10.5px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.04em;border-bottom:.5px solid var(--bd);text-align:center;white-space:nowrap}
+.perm-matrix th:first-child{text-align:left;width:200px}
+.perm-matrix td{padding:8px 10px;border-bottom:.5px solid var(--bd);text-align:center;vertical-align:middle}
+.perm-matrix td:first-child{text-align:left;font-weight:500;color:var(--tp)}
+.perm-matrix tr:hover td{background:var(--s2)}
+.perm-matrix tr.group-hdr td{background:var(--s3);font-size:10.5px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:6px 10px}
+.perm-check{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--bds);background:var(--sf);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.perm-check.on{background:var(--ta);border-color:var(--ta)}
+.perm-check.on::after{content:'✓';font-size:9px;color:#fff;font-weight:700}
+.perm-check.partial{background:var(--bga);border-color:var(--ta)}
+.perm-check.partial::after{content:'–';font-size:11px;color:var(--ta);font-weight:700}
+.perm-check.disabled{background:var(--s3);border-color:var(--bd);cursor:not-allowed;opacity:.5}
+
+/* ITEM CARD */
+.item-card{background:var(--sf);border:.5px solid var(--bd);border-radius:8px;padding:13px 14px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:border-color .15s}
+.item-card:hover{border-color:var(--bds)}
+.item-card.selected{border-color:var(--ta);background:var(--bga)}
+.item-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.item-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.item-meta{font-size:11px;color:var(--tm)}
+.item-actions{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
+
+/* SCREEN ACCESS TREE */
+.access-tree{display:flex;flex-direction:column;gap:1px}
+.access-group{background:var(--sf);border:.5px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:8px}
+.access-group-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--s2);border-bottom:.5px solid var(--bd);font-size:12px;font-weight:500}
+.access-row{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 36px;border-bottom:.5px solid var(--bd);font-size:12px}
+.access-row:last-child{border-bottom:none}
+.access-row:hover{background:var(--s2)}
+.access-icon{font-size:13px;color:var(--tm);width:18px;flex-shrink:0}
+.access-name{flex:1;color:var(--ts)}
+.access-perms{display:flex;gap:12px;flex-shrink:0}
+.perm-label{font-size:10px;color:var(--tm);text-align:center;width:40px}
+.perm-cell{width:40px;display:flex;justify-content:center}
+
+/* STEP WIZARD */
+.wizard-steps{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding:4px 24px;width:100%}
+.w-step{display:flex;flex-direction:column;align-items:center;cursor:pointer;user-select:none;min-width:68px}
+.w-line{flex:1;height:2px;background:var(--bd);margin:13px 10px 0 10px;transition:background .2s}
+.w-line.done{background:var(--bdg)}
+.w-node{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:2px solid;flex-shrink:0;background:var(--sf);color:var(--tm);border-color:var(--bd);transition:all .2s}
+.w-node.w-done{background:var(--bgg);color:var(--tg);border-color:var(--bdg)}
+.w-node.w-active{background:var(--ta);color:#fff;border-color:var(--ta);box-shadow:0 0 0 3px var(--bga)}
+.w-node.w-idle{background:var(--sf);color:var(--tm);border-color:var(--bd)}
+.w-label{font-size:11px;color:var(--tm);text-align:center;white-space:nowrap;margin-top:6px;transition:color .2s}
+.w-label.active{color:var(--ta);font-weight:600}
+.w-label.done{color:var(--tg);font-weight:500}
+.w-step-body{display:none}
+.w-step-body.active{display:block}
+
+/* LAYOUT */
+.info-box{background:var(--bga);border:.5px solid var(--bda);border-radius:var(--r);padding:8px 11px;font-size:11px;color:var(--ta);display:flex;gap:7px;align-items:flex-start;margin-bottom:10px}
+.warn-box{background:var(--bgw);border:.5px solid var(--bdw);border-radius:var(--r);padding:8px 11px;font-size:11px;color:var(--tw);display:flex;gap:7px;align-items:flex-start;margin-bottom:10px}
+.sidebar-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;align-items:start}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,26,24,0.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;overflow-y:auto}
+.modal-box{background:var(--sf);border-radius:8px;border:0.5px solid var(--bd);box-shadow:0 12px 32px rgba(0,0,0,0.18);width:100%;max-width:560px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;margin:auto}
+.modal-box .card-hdr{flex-shrink:0}
+.modal-box .card-body{flex:1;overflow-y:auto;min-height:0}
+.modal-box form{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+</style>
+@await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="logo-mark"><span>LX</span></div>
+      <div><div class="logo-name">LegalXML</div><div class="logo-sub">Publishing system</div></div>
+    </div>
+    <div class="sb-nav" style="flex:1;overflow-y:auto;overflow-x:hidden">
+      <div class="nav-sec">Main</div>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-layout-dashboard"></i></span>Dashboard</a>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-upload"></i></span>Intake queue<span class="nav-badge nb-w">12</span></a>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-tags"></i></span>Tag review<span class="nav-badge nb-d">7</span></a>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-shield-check"></i></span>QC results</a>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-world-upload"></i></span>Publication<span class="nav-badge nb-s">41</span></a>
+      <div class="nav-sec">Admin</div>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-adjustments"></i></span>Tagging rules</a>
+      <a class="nav-item" href="#"><span class="nav-icon"><i class="ti ti-history"></i></span>Audit log</a>
+      <div class="nav-item active" style="background:var(--bga);color:var(--ta)">
+        <span class="nav-icon"><i class="ti ti-users"></i></span>User management
+      </div>
+      <div class="nav-sub">
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Departments" ? "active" : "")" href="/Departments"><span class="nav-icon"><i class="ti ti-building"></i></span>Departments</a>
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Roles" ? "active" : "")" href="/Roles"><span class="nav-icon"><i class="ti ti-shield"></i></span>Roles</a>
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Users" ? "active" : "")" href="/Users"><span class="nav-icon"><i class="ti ti-user"></i></span>Users</a>
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "ScreenAccess" ? "active" : "")" href="/ScreenAccess"><span class="nav-icon"><i class="ti ti-lock"></i></span>Screen access</a>
+      </div>
+      <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Settings" ? "active" : "")" href="/Settings"><span class="nav-icon"><i class="ti ti-settings"></i></span>Settings</a>
+      <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Communication" ? "active" : "")" href="/Settings/Communication"><span class="nav-icon"><i class="ti ti-mail-fast"></i></span>Communication</a>
+      <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "CommunicationEvents" ? "active" : "")" href="/CommunicationEvents"><span class="nav-icon"><i class="ti ti-bell-ringing"></i></span>Communication events</a>
+    </div>
+    @{
+      var userName = Context.Request.Cookies["user_name"] ?? "System Administrator";
+      var userRole = Context.Request.Cookies["user_role"] ?? "Administrator";
+      var userInitials = Context.Request.Cookies["user_initials"] ?? "SA";
+      var isAuthenticated = !string.IsNullOrEmpty(Context.Request.Cookies["jwt_token"]);
+    }
+    <div class="sb-footer">
+      <div style="display:flex;align-items:center;gap:8px">
+        <a href="/Settings" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;text-decoration:none;color:inherit" title="View profile & settings">
+          <div class="av av-pu">@userInitials</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@userName</div>
+            <div style="font-size:10px;color:var(--tm)">@userRole</div>
+          </div>
+        </a>
+        <a href="/logout" title="Sign out" style="color:var(--tm);padding:4px;display:flex;align-items:center;border-radius:4px;text-decoration:none" onmouseover="this.style.color='var(--tr)'" onmouseout="this.style.color='var(--tm)'">
+          <i class="ti ti-logout" style="font-size:16px"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <span style="font-size:14px;font-weight:500">@(ViewData["PageHeading"] ?? "Department management")</span>
+        <span style="color:var(--tm);font-size:11px;margin-left:6px">@(ViewData["PageSubtitle"] ?? "")</span>
+      </div>
+      <div class="tb-right">
+        <div class="icon-btn" title="Notifications"><i class="ti ti-bell"></i><div class="ndot"></div></div>
+        <div class="icon-btn" onclick="window.location.reload()" title="Refresh"><i class="ti ti-refresh"></i></div>
+        @await RenderSectionAsync("TopbarActions", required: false)
+        <div style="width:1px;height:24px;background:var(--bd);margin:0 4px"></div>
+        <a href="/Settings" style="display:flex;align-items:center;gap:8px;padding-left:4px;text-decoration:none;color:inherit;cursor:pointer" title="View profile & settings">
+          <div class="av av-pu" style="width:28px;height:28px;font-size:11px">@userInitials</div>
+          <div style="display:flex;flex-direction:column;line-height:1.2;text-align:left">
+            <span style="font-size:12px;font-weight:600;color:var(--tp)">@userName</span>
+            <span style="font-size:10px;color:var(--tm)">@userRole</span>
+          </div>
+        </a>
+        <a href="/logout" class="btn btn-sm btn-danger" style="margin-left:4px;gap:5px;padding:4px 9px;text-decoration:none;font-weight:500" title="Logout from LegalXML">
+          <i class="ti ti-logout" style="font-size:13px"></i>
+          <span>Logout</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    @{
+      var activePage = ViewData["ActivePage"]?.ToString();
+      var showUserMgmtTabs = activePage == "Departments" || activePage == "Roles" || activePage == "Users" || activePage == "ScreenAccess";
+    }
+    @if (showUserMgmtTabs)
+    {
+      <div class="tabs">
+        <a class="tab @(activePage == "Departments" ? "active" : "")" href="/Departments"><i class="ti ti-building" style="font-size:13px"></i>Departments</a>
+        <a class="tab @(activePage == "Roles" ? "active" : "")" href="/Roles"><i class="ti ti-shield" style="font-size:13px"></i>Roles</a>
+        <a class="tab @(activePage == "Users" ? "active" : "")" href="/Users"><i class="ti ti-user" style="font-size:13px"></i>Users</a>
+        <a class="tab @(activePage == "ScreenAccess" ? "active" : "")" href="/ScreenAccess"><i class="ti ti-lock" style="font-size:13px"></i>Screen access</a>
+      </div>
+    }
+
+    <!-- CONTENT -->
+    <div class="content">
+      @RenderBody()
+    </div>
+  </div>
+
+</div>
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

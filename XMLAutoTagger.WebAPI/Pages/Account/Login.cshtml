@@ -1,0 +1,780 @@
+@page "/login"
+@model XMLAutoTagger.WebAPI.Pages.Account.LoginModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Sign in — LegalXML";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in — LegalXML Automation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-page: #F8FAFC;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --border-subtle: #EDF2F7;
+            --text-heading: #0F172A;
+            --text-body: #334155;
+            --text-muted: #64748B;
+            --text-light: #94A3B8;
+            --primary: #185FA5;
+            --primary-hover: #124C85;
+            --primary-light: #EBF3FC;
+            --primary-border: #93C5FD;
+            --success: #16A34A;
+            --success-light: #DCFCE7;
+            --warning: #D97706;
+            --warning-light: #FEF3C7;
+            --danger: #DC2626;
+            --danger-light: #FEE2E2;
+            --purple: #7C3AED;
+            --purple-light: #EDE9FE;
+            --font: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-page);
+            color: var(--text-body);
+            font-size: 13px;
+            line-height: 1.5;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: stretch;
+        }
+
+        /* 2-COLUMN SPLIT CONTAINER */
+        .auth-container {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+        }
+
+        /* LEFT HERO PANEL */
+        .hero-panel {
+            flex: 1.15;
+            background: linear-gradient(165deg, #F8FAFC 0%, #F1F5F9 50%, #E8EEF5 100%);
+            border-right: 1px solid var(--border);
+            padding: 48px 56px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .hero-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 100%;
+            background: radial-gradient(circle at 100% 30%, rgba(24, 95, 165, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: -0.02em;
+            box-shadow: 0 4px 10px rgba(24, 95, 165, 0.25);
+        }
+
+        .brand-text h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-heading);
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+
+        .brand-text p {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .hero-content {
+            max-width: 540px;
+            margin-bottom: 32px;
+        }
+
+        .hero-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-heading);
+            line-height: 1.2;
+            letter-spacing: -0.025em;
+            margin-bottom: 14px;
+        }
+
+        .hero-title .text-accent {
+            color: var(--primary);
+            position: relative;
+        }
+
+        .hero-desc {
+            font-size: 13.5px;
+            color: var(--text-body);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        /* FEATURE CARDS LIST */
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+
+        .feature-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-1px);
+            background: #FFFFFF;
+            border-color: var(--primary-border);
+            box-shadow: 0 4px 12px rgba(24, 95, 165, 0.08);
+        }
+
+        .feature-icon-wrap {
+            width: 36px;
+            height: 36px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .icon-blue { background: var(--primary-light); color: var(--primary); }
+        .icon-green { background: var(--success-light); color: var(--success); }
+        .icon-amber { background: var(--warning-light); color: var(--warning); }
+        .icon-purple { background: var(--purple-light); color: var(--purple); }
+
+        .feature-text {
+            flex: 1;
+        }
+
+        .feature-text h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-heading);
+            margin-bottom: 2px;
+        }
+
+        .feature-text p {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        /* BOTTOM WORKFLOW STEPPER */
+        .workflow-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            max-width: 520px;
+        }
+
+        .wf-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .wf-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            border: 1.5px solid var(--primary-border);
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wf-label {
+            font-size: 10.5px;
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .wf-line {
+            flex: 1;
+            height: 1.5px;
+            background: var(--border);
+            margin: 0 10px 14px 10px;
+        }
+
+        /* RIGHT SIGN-IN FORM PANEL */
+        .form-panel {
+            flex: 0.95;
+            min-width: 440px;
+            max-width: 560px;
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 48px 56px;
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.03);
+            position: relative;
+        }
+
+        .form-header {
+            margin-bottom: 20px;
+        }
+
+        .form-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-heading);
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .form-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* SSO DOMAIN PILL */
+        .domain-pill {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #F8FAFC;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 22px;
+        }
+
+        .domain-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-heading);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22C55E;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+        }
+
+        .env-badge {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 9px;
+            border-radius: 99px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary-border);
+        }
+
+        /* DIVIDER */
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 22px;
+            color: var(--text-light);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .auth-divider span {
+            padding: 0 12px;
+            color: var(--text-muted);
+        }
+
+        /* FORM ELEMENTS */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-heading);
+            display: block;
+        }
+
+        .forgot-link {
+            font-size: 12px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        .forgot-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon-left {
+            position: absolute;
+            left: 12px;
+            color: var(--text-light);
+            font-size: 16px;
+            pointer-events: none;
+            transition: color 0.15s;
+        }
+
+        .form-input {
+            width: 100%;
+            height: 40px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #FFFFFF;
+            padding: 0 38px 0 36px;
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--text-heading);
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-input:focus + .input-icon-left {
+            color: var(--primary);
+        }
+
+        .pwd-toggle-btn {
+            position: absolute;
+            right: 8px;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            border-radius: 4px;
+            transition: color 0.15s;
+        }
+
+        .pwd-toggle-btn:hover {
+            color: var(--text-heading);
+        }
+
+        /* REMEMBER ME CHECKBOX */
+        .remember-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 22px;
+            user-select: none;
+        }
+
+        .remember-wrap input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .remember-wrap label {
+            font-size: 12.5px;
+            color: var(--text-body);
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* SUBMIT BUTTON */
+        .btn-submit {
+            width: 100%;
+            height: 42px;
+            background: var(--primary);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-size: 13.5px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 6px rgba(24, 95, 165, 0.2);
+            transition: all 0.15s ease;
+        }
+
+        .btn-submit:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(24, 95, 165, 0.3);
+            transform: translateY(-0.5px);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        /* ALERT */
+        .alert-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            margin-bottom: 18px;
+        }
+
+        .alert-error {
+            background: var(--danger-light);
+            border: 1px solid #FCA5A5;
+            color: var(--danger);
+        }
+
+        /* FOOTER HELP */
+        .help-footer {
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            font-size: 11.5px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.4;
+        }
+
+        .help-footer strong {
+            color: var(--text-heading);
+            font-weight: 600;
+        }
+
+        /* STATE PILLS (Bottom Wireframe Helper) */
+        .state-pills-bar {
+            margin-top: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .state-pill {
+            font-size: 10.5px;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: #F8FAFC;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.12s;
+        }
+
+        .state-pill:hover {
+            background: #F1F5F9;
+            color: var(--text-heading);
+        }
+
+        .state-pill.active {
+            background: var(--primary-light);
+            border-color: var(--primary-border);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .state-pill.pill-danger {
+            color: var(--danger);
+            border-color: #FECACA;
+        }
+
+        /* RESPONSIVE */
+        @@media (max-width: 960px) {
+            .auth-container {
+                flex-direction: column;
+            }
+            .hero-panel {
+                padding: 32px 24px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .form-panel {
+                min-width: 100%;
+                max-width: 100%;
+                padding: 36px 24px;
+            }
+            .workflow-stepper {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+
+        <!-- LEFT HERO PANEL -->
+        <section class="hero-panel">
+            <div>
+                <!-- Brand logo header -->
+                <div class="brand-header">
+                    <div class="brand-logo">LX</div>
+                    <div class="brand-text">
+                        <h1>LegalXML</h1>
+                        <p>Internal publishing system</p>
+                    </div>
+                </div>
+
+                <!-- Hero titles -->
+                <div class="hero-content">
+                    <h2 class="hero-title">
+                        Automate your<br>
+                        <span class="text-accent">XML extraction</span><br>
+                        from legal PDFs
+                    </h2>
+                    <p class="hero-desc">
+                        A secure internal platform for case law, legislation, gazette orders, and practice directions — from raw PDF to Akoma Ntoso XML in minutes.
+                    </p>
+                </div>
+
+                <!-- 4 Feature Cards -->
+                <div class="feature-list">
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap icon-blue">
+                            <i class="ti ti-file-text"></i>
+                        </div>
+                        <div class="feature-text">
+                            <h3>Drag-and-drop PDF ingestion</h3>
+                            <p>DOCX, RTF, scanned PDF — all formats normalised via PdfPig and Tesseract OCR</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap icon-green">
+                            <i class="ti ti-tags"></i>
+                        </div>
+                        <div class="feature-text">
+                            <h3>Automated XML tagging</h3>
+                            <p>ANTLR4 rule engine + ML.NET + spaCy NER — citations, sections, definitions tagged automatically</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap icon-amber">
+                            <i class="ti ti-shield-check"></i>
+                        </div>
+                        <div class="feature-text">
+                            <h3>6-point QC pipeline</h3>
+                            <p>XSD validation, citation resolver, duplicate detection — only flagged documents reach an editor</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap icon-purple">
+                            <i class="ti ti-world-upload"></i>
+                        </div>
+                        <div class="feature-text">
+                            <h3>One-step multi-channel publish</h3>
+                            <p>Saxon-HE XSLT 3.0 produces web HTML, REST API payload, and print PDF from a single XML source</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflow step dots -->
+            <div class="workflow-stepper">
+                <div class="wf-node">
+                    <div class="wf-circle">1</div>
+                    <span class="wf-label">Ingest PDF</span>
+                </div>
+                <div class="wf-line"></div>
+                <div class="wf-node">
+                    <div class="wf-circle">2</div>
+                    <span class="wf-label">Auto-tag XML</span>
+                </div>
+                <div class="wf-line"></div>
+                <div class="wf-node">
+                    <div class="wf-circle">3</div>
+                    <span class="wf-label">QC checks</span>
+                </div>
+                <div class="wf-line"></div>
+                <div class="wf-node">
+                    <div class="wf-circle">4</div>
+                    <span class="wf-label">Publish online</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT SIGN-IN FORM PANEL -->
+        <section class="form-panel">
+            <div class="form-header">
+                <h2>Sign in</h2>
+                <p>Use your organisational account to access LegalXML</p>
+            </div>
+
+            <!-- Error message if any -->
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert-box alert-error" id="error-alert">
+                    <i class="ti ti-alert-triangle" style="font-size:16px;flex-shrink:0"></i>
+                    <span>@Model.ErrorMessage</span>
+                </div>
+            }
+
+            <!-- Sign in form -->
+            <form method="post" id="loginForm" style="margin-top: 18px;">
+                <div class="form-group">
+                    <label for="Email">Email address</label>
+                    <div class="input-wrapper">
+                        <i class="ti ti-mail input-icon-left"></i>
+                        <input type="email" id="Email" name="Email" class="form-input" value="@Model.Email" placeholder="name@cljlaw.com" required autocomplete="username" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-row">
+                        <label for="Password">Password</label>
+                        <a href="javascript:void(0)" class="forgot-link" onclick="handleForgotPassword()">Forgot password?</a>
+                    </div>
+                    <div class="input-wrapper">
+                        <i class="ti ti-lock input-icon-left"></i>
+                        <input type="password" id="Password" name="Password" class="form-input" placeholder="Enter your password" required autocomplete="current-password" />
+                        <button type="button" class="pwd-toggle-btn" onclick="togglePasswordVisibility()" title="Toggle password visibility">
+                            <i id="eye-icon" class="ti ti-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="remember-wrap">
+                    <input type="checkbox" id="RememberMe" name="RememberMe" value="true" @(Model.RememberMe ? "checked" : "") />
+                    <label for="RememberMe">Remember this</label>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btnSubmit">
+                    <i class="ti ti-login"></i>
+                    <span>Sign in</span>
+                </button>
+            </form>
+
+            <!-- Bottom help text -->
+            <div class="help-footer">
+                <i class="ti ti-info-circle" style="font-size:15px;color:var(--text-light);flex-shrink:0"></i>
+                <span>Need access? Contact <strong>IT helpdesk</strong> or your <strong>department administrator</strong></span>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        function togglePasswordVisibility() {
+            var pwdInput = document.getElementById('Password');
+            var eyeIcon = document.getElementById('eye-icon');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                eyeIcon.className = 'ti ti-eye-off';
+            } else {
+                pwdInput.type = 'password';
+                eyeIcon.className = 'ti ti-eye';
+            }
+        }
+
+        function handleForgotPassword() {
+            alert('To reset your password, please contact the IT Helpdesk at support@cljlaw.com or your department administrator.');
+        }
+
+        function presetState(state) {
+            var emailInput = document.getElementById('Email');
+            var pwdInput = document.getElementById('Password');
+            var errorBox = document.getElementById('error-alert');
+
+            if (state === 'wrongpwd') {
+                emailInput.value = 'user@cljlaw.com';
+                pwdInput.value = 'invalidpassword';
+                alert('State: "Wrong password" demo. Submitting with incorrect credentials will show the server error.');
+            } else if (state === 'forgot') {
+                handleForgotPassword();
+            } else if (state === 'resetsent') {
+                alert('Password reset instructions have been dispatched to your verified email address.');
+            } else if (state === 'locked') {
+                alert('Account is locked due to multiple consecutive failed attempts. Please contact security admin.');
+            } else if (state === 'success') {
+                emailInput.value = 'admin@legalxml.my';
+                pwdInput.value = 'uZUt#avKu4Ck';
+            } else if (state === 'login') {
+                emailInput.value = '';
+                pwdInput.value = '';
+                if (errorBox) errorBox.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

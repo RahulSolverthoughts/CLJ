@@ -1,0 +1,1048 @@
+@page
+@model XMLAutoTagger.WebAPI.Pages.Users.IndexModel
+@{
+    ViewData["Title"] = "Users";
+    ViewData["ActivePage"] = "Users";
+    ViewData["PageHeading"] = "User management";
+    ViewData["PageSubtitle"] = $"{Model.Users.Count} users · {Model.Departments.Count} departments";
+    Layout = "_Layout";
+}
+
+@Html.AntiForgeryToken()
+
+@section TopbarActions {
+    @if (Model.CanEdit)
+    {
+        <button class="btn btn-sm" onclick="startNewUserFromTopbar()"><i class="ti ti-plus" style="font-size:11px"></i><span id="tb-add-label">Add user</span></button>
+    }
+    else
+    {
+        <span class="badge b-s" style="padding:5px 10px;font-size:11.5px;gap:5px"><i class="ti ti-eye"></i> View only</span>
+    }
+}
+
+<!-- WIZARD CARD (Used for both Creation and In-Place Editing) -->
+<div class="card" id="wizard-card" style="margin-bottom:14px;position:relative;@(Model.CanEdit ? "" : "display:none;")">
+    <div class="card-hdr">
+        <div class="card-title" id="wizard-card-title">
+            <i class="ti ti-user-plus" id="wizard-icon" style="color:var(--ta)"></i>
+            <span id="wizard-title-text">Create new user</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+            <button type="button" class="btn btn-xs" id="btn-new-user-mode" onclick="resetToNewUserMode()" style="display:none">
+                <i class="ti ti-plus" style="font-size:10px"></i>New user mode
+            </button>
+            <button type="button" class="btn btn-xs" onclick="toggleWizard()"><i class="ti ti-x"></i></button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Step indicator -->
+        <div class="wizard-steps" id="wizard">
+            <div class="w-step" onclick="goToStep(1)">
+                <div class="w-node w-active" id="ws1">1</div>
+                <div class="w-label active" id="wlbl1">Identity</div>
+            </div>
+            <div class="w-line" id="wl1"></div>
+            <div class="w-step" onclick="goToStep(2)">
+                <div class="w-node w-idle" id="ws2">2</div>
+                <div class="w-label" id="wlbl2">Role & dept</div>
+            </div>
+            <div class="w-line" id="wl2"></div>
+            <div class="w-step" onclick="goToStep(3)">
+                <div class="w-node w-idle" id="ws3">3</div>
+                <div class="w-label" id="wlbl3">Access</div>
+            </div>
+            <div class="w-line" id="wl3"></div>
+            <div class="w-step" onclick="goToStep(4)">
+                <div class="w-node w-idle" id="ws4">4</div>
+                <div class="w-label" id="wlbl4">Confirm</div>
+            </div>
+        </div>
+
+        <!-- Step bodies -->
+        <!-- Step 1: Identity -->
+        <div class="w-step-body active" id="wbody1">
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">First name <span class="req">*</span></div>
+                    <input class="form-input" id="wiz-firstname" placeholder="e.g. Aishah">
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Last name <span class="req">*</span></div>
+                    <input class="form-input" id="wiz-lastname" placeholder="e.g. Mahmud">
+                </div>
+            </div>
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Email <span class="req">*</span></div>
+                    <input class="form-input" id="wiz-email" type="email" placeholder="aishah.mahmud@legalxml.gov.my">
+                    <div class="form-hint">Must be an organisation email</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Staff ID</div>
+                    <input class="form-input" id="wiz-staffid" placeholder="e.g. EMP-0042">
+                </div>
+            </div>
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Phone (optional)</div>
+                    <input class="form-input" id="wiz-phone" placeholder="+60 12 345 6789">
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Preferred language</div>
+                    <select class="form-select" id="wiz-language">
+                        <option value="en">English</option>
+                        <option value="ms">Bahasa Melayu</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Role and Dept -->
+        <div class="w-step-body" id="wbody2">
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Role <span class="req">*</span></div>
+                    <select class="form-select" id="wiz-role">
+                        @foreach (var role in Model.Roles)
+                        {
+                            <option value="@role.RoleId" data-name="@role.RoleName">@role.RoleName</option>
+                        }
+                    </select>
+                    <div class="form-hint">Controls which screens and actions the user can access</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Department <span class="req">*</span></div>
+                    <select class="form-select" id="wiz-dept">
+                        <option value="">Unassigned</option>
+                        @foreach (var dept in Model.Departments)
+                        {
+                            <option value="@dept.DepartmentId" data-name="@dept.DepartmentName">@dept.DepartmentName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-label">Document type specialisation</div>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px" id="wiz-doctypes-group">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;background:var(--s2);border:.5px solid var(--bd);border-radius:var(--r);padding:8px 10px;cursor:pointer">
+                        <input type="checkbox" name="wiz-doc-type" value="case_law" checked>
+                        <span class="badge b-a" style="font-size:10px">Case law</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;background:var(--s2);border:.5px solid var(--bd);border-radius:var(--r);padding:8px 10px;cursor:pointer">
+                        <input type="checkbox" name="wiz-doc-type" value="legislation">
+                        <span class="badge b-p" style="font-size:10px">Legislation</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;background:var(--s2);border:.5px solid var(--bd);border-radius:var(--r);padding:8px 10px;cursor:pointer">
+                        <input type="checkbox" name="wiz-doc-type" value="gazette">
+                        <span class="badge b-w" style="font-size:10px">Gazette</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;background:var(--s2);border:.5px solid var(--bd);border-radius:var(--r);padding:8px 10px;cursor:pointer">
+                        <input type="checkbox" name="wiz-doc-type" value="practice_dir">
+                        <span class="badge b-n" style="font-size:10px">Practice dir.</span>
+                    </label>
+                </div>
+            </div>
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Account status</div>
+                    <select class="form-select" id="wiz-status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="locked">Locked</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Access expiry (optional)</div>
+                    <input type="date" class="form-input" id="wiz-expiry">
+                    <div class="form-hint">Leave blank for permanent access</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Access & Credentials -->
+        <div class="w-step-body" id="wbody3">
+            <div class="form-row">
+                <div class="form-label" id="wiz-pass-label">Password</div>
+                <div style="display:flex;gap:6px">
+                    <input class="form-input" id="wiz-password" type="text" value="TempPass2026!" style="flex:1" placeholder="Leave blank to keep existing password">
+                    <button type="button" class="btn btn-sm" onclick="generatePassword()"><i class="ti ti-refresh" style="font-size:11px"></i>Generate</button>
+                </div>
+                <div class="form-hint" id="wiz-pass-hint">User will be required to change on first login</div>
+            </div>
+            <div class="form-row">
+                <div class="form-label" style="display:flex;align-items:center;gap:8px">
+                    Send welcome / update email
+                    <div class="toggle on" id="wiz-send-welcome-toggle" onclick="this.classList.toggle('on');this.classList.toggle('off')">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div class="form-hint">Sends credentials and notification to the user's email address</div>
+            </div>
+
+            <!-- Screen Access Permissions Matrix / Overrides -->
+            <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--bd)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <div class="form-label" style="margin-bottom:2px">
+                            <i class="ti ti-shield-lock" style="color:var(--ta);font-size:13px"></i>
+                            <span>Screen Access & Permission Overrides</span>
+                        </div>
+                        <div class="form-hint">Inherits default permissions from assigned role. Customize permissions for any screen below (including Email, SMS, WhatsApp settings):</div>
+                    </div>
+                    <span class="badge b-p" id="wiz-active-role-badge">Role: Administrator</span>
+                </div>
+
+                <div id="wiz-screen-access-container" style="max-height:260px;overflow-y:auto;border:0.5px solid var(--bd);border-radius:6px;padding:8px 10px;background:var(--s2)">
+                    <!-- Dynamically populated per screen groups -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Confirm -->
+        <div class="w-step-body" id="wbody4">
+            <div class="warn-box" id="wiz-confirm-box">
+                <i class="ti ti-alert-triangle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span id="wiz-confirm-text">Review all details before proceeding. Role and access can be changed later from this screen.</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">FULL NAME</div>
+                    <div style="font-weight:500" id="sum-name"></div>
+                </div>
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">EMAIL</div>
+                    <div style="font-weight:500" id="sum-email"></div>
+                </div>
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">ROLE</div>
+                    <div><span class="badge b-n" id="sum-role"></span></div>
+                </div>
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">DEPARTMENT</div>
+                    <div style="font-weight:500" id="sum-dept"></div>
+                </div>
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">SPECIALISATION</div>
+                    <div><span class="badge b-a" style="font-size:10px" id="sum-doctypes"></span></div>
+                </div>
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">STATUS</div>
+                    <div><span class="badge b-s" id="sum-status">Active</span></div>
+                </div>
+                <div style="background:var(--s2);border-radius:6px;padding:10px 12px;grid-column:span 2">
+                    <div style="color:var(--tm);font-size:10.5px;margin-bottom:4px">CUSTOM SCREEN ACCESS OVERRIDES</div>
+                    <div id="sum-overrides" style="font-size:11.5px;color:var(--ts)">None (inherits default role permissions)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wizard Nav Buttons -->
+        <div style="display:flex;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:.5px solid var(--bd)">
+            <button class="btn btn-sm" id="wiz-back" onclick="changeStep(-1)" disabled>← Back</button>
+            <div style="font-size:11px;color:var(--tm)" id="wiz-step-text">Step 1 of 4</div>
+            <button class="btn btn-sm btn-accent" id="wiz-btn-next" onclick="changeStep(1)">Next →</button>
+        </div>
+    </div>
+</div>
+
+<!-- EXISTING USERS TABLE -->
+<div class="card" style="position:relative">
+    <div class="card-hdr">
+        <div class="card-title"><i class="ti ti-users" style="color:var(--ta)"></i>All users (@Model.Users.Count)</div>
+        <div style="display:flex;gap:6px">
+            <select class="form-select" id="filter-role" onchange="filterUsers()" style="font-size:11px;padding:3px 7px;width:auto">
+                <option value="">All roles</option>
+                @foreach (var r in Model.Roles)
+                {
+                    <option value="@r.RoleName">@r.RoleName</option>
+                }
+            </select>
+            <select class="form-select" id="filter-dept" onchange="filterUsers()" style="font-size:11px;padding:3px 7px;width:auto">
+                <option value="">All departments</option>
+                @foreach (var d in Model.Departments)
+                {
+                    <option value="@d.DepartmentName">@d.DepartmentName</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div style="overflow-x:auto">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width:28%">User</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Specialisation</th>
+                    <th>Status</th>
+                    <th>Last active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="user-table-body">
+                @if (Model.Users.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" style="text-align:center;padding:16px;color:var(--tm)">No users found. Use the wizard above to create one.</td>
+                    </tr>
+                }
+                @foreach (var user in Model.Users)
+                {
+                    <tr class="user-row" id="user-row-@user.UserId" data-role="@user.RoleName" data-dept="@user.DepartmentName">
+                        <td>
+                            <div style="display:flex;align-items:center;gap:7px">
+                                <div class="av" style="background:@user.AvatarColourHex;color:#fff;width:26px;height:26px;font-size:9px">
+                                    @user.AvatarInitials
+                                </div>
+                                <div>
+                                    <div style="font-weight:500">@user.FullName</div>
+                                    <div style="font-size:10px;color:var(--tm)">@user.Email</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge b-p">@user.RoleName</span>
+                        </td>
+                        <td style="font-size:11px;color:var(--ts)">
+                            @user.DepartmentName
+                        </td>
+                        <td>
+                            <span class="badge b-a" style="font-size:10px">@user.SpecialisationText</span>
+                        </td>
+                        <td>
+                            @if (user.AccountStatus == "active")
+                            {
+                                <span class="badge b-s">Active</span>
+                            }
+                            else if (user.AccountStatus == "locked")
+                            {
+                                <span class="badge b-d">Locked</span>
+                            }
+                            else
+                            {
+                                <span class="badge b-w">@user.AccountStatus</span>
+                            }
+                        </td>
+                        <td style="font-size:11px;color:var(--tm)">
+                            @(user.LastLoginAt.HasValue ? user.LastLoginAt.Value.ToString("dd MMM, HH:mm") : "Never")
+                        </td>
+                        <td>
+                            @if (Model.CanEdit)
+                            {
+                                <div style="display:flex;gap:4px;align-items:center">
+                                    <button type="button" class="btn btn-xs" title="Edit user" onclick="editUserInWizard('@user.UserId')">
+                                        <i class="ti ti-edit" style="font-size:10px"></i>Edit
+                                    </button>
+                                    <button type="button" class="btn btn-xs" style="background:var(--s2);color:var(--t1);border:0.5px solid var(--bd)" title="Change password" onclick="openChangePasswordModal('@user.UserId', '@user.FullName', '@user.Email')">
+                                        <i class="ti ti-key" style="font-size:10px;color:var(--ta)"></i>Password
+                                    </button>
+                                    <button type="button" class="btn btn-xs @(user.AccountStatus == "locked" ? "btn-accent" : "btn-danger")" title="@(user.AccountStatus == "locked" ? "Unlock user" : "Lock user")" onclick="toggleUserLock('@user.UserId', '@user.FullName', '@user.AccountStatus')">
+                                        <i class="ti @(user.AccountStatus == "locked" ? "ti-lock-open" : "ti-lock")" style="font-size:10px"></i>@(user.AccountStatus == "locked" ? "Unlock" : "Lock")
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge b-s" style="font-size:10px"><i class="ti ti-eye"></i> View only</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- CHANGE PASSWORD MODAL -->
+<div id="modal-change-password" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+    <div class="card" style="width:100%;max-width:460px;background:var(--sf);border-radius:8px;box-shadow:0 12px 36px rgba(0,0,0,0.35);overflow:hidden">
+        <div class="card-hdr" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:0.5px solid var(--bd)">
+            <div class="card-title" style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600">
+                <i class="ti ti-key" style="color:var(--ta);font-size:16px"></i>
+                <span>Change user password</span>
+            </div>
+            <button type="button" class="btn btn-xs" onclick="closeChangePasswordModal()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="card-body" style="padding:16px">
+            <input type="hidden" id="pwd-user-id">
+            
+            <div style="background:var(--s2);border:0.5px solid var(--bd);border-radius:6px;padding:10px 12px;margin-bottom:14px">
+                <div style="font-size:10.5px;color:var(--tm);margin-bottom:2px">TARGET ACCOUNT</div>
+                <div style="font-weight:600;font-size:13px" id="pwd-user-name"></div>
+                <div style="font-size:11px;color:var(--ts)" id="pwd-user-email"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">New password <span class="req">*</span></div>
+                <div style="display:flex;gap:6px">
+                    <input class="form-input" id="pwd-new-password" type="password" placeholder="Enter new password" style="flex:1" required>
+                    <button type="button" class="btn btn-sm" onclick="togglePasswordVisibility('pwd-new-password', 'pwd-toggle-icon')" title="Show/Hide" style="padding:0 8px">
+                        <i class="ti ti-eye" id="pwd-toggle-icon"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="generateChangePassword()" title="Generate password">
+                        <i class="ti ti-refresh"></i> Generate
+                    </button>
+                </div>
+                <div class="form-hint">At least 6 characters with letters, numbers, and symbols</div>
+            </div>
+
+            <div class="form-row" style="margin-top:10px">
+                <div class="form-label">Confirm new password <span class="req">*</span></div>
+                <input class="form-input" id="pwd-confirm-password" type="password" placeholder="Re-enter new password" required>
+            </div>
+
+            <div class="form-row" style="margin-top:10px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" id="pwd-must-change" checked>
+                    <span>Require user to change password on next login</span>
+                </label>
+            </div>
+        </div>
+        <div class="card-ftr" style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:0.5px solid var(--bd);background:var(--s2)">
+            <button type="button" class="btn btn-sm" onclick="closeChangePasswordModal()">Cancel</button>
+            <button type="button" class="btn btn-sm btn-accent" id="btn-save-password" onclick="submitChangePasswordModal()">
+                <i class="ti ti-check"></i> Update password
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- JSON Data Cache -->
+<script id="users-json-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Users, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+<script id="screens-json-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Screens, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+<script id="roles-json-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Roles, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+
+@section Scripts {
+<script>
+    const canEdit = @(Model.CanEdit ? "true" : "false");
+    let usersTableData = JSON.parse(document.getElementById('users-json-data')?.textContent || '[]');
+    let screensData = JSON.parse(document.getElementById('screens-json-data')?.textContent || '[]');
+    let rolesData = JSON.parse(document.getElementById('roles-json-data')?.textContent || '[]');
+    let editingUserId = null; // null = creation mode, GUID = edit mode
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    function getCsrfToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    }
+
+    // Bind existing user into the Wizard directly (No popup!)
+    function editUserInWizard(userId) {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot edit users.');
+            return;
+        }
+        const user = usersTableData.find(u => (u.userId || u.UserId) === userId);
+        if (!user) return;
+
+        editingUserId = user.userId || user.UserId;
+
+        // Ensure wizard card is visible
+        const wizard = document.getElementById('wizard-card');
+        wizard.style.display = 'block';
+
+        // Update Wizard Card Header
+        document.getElementById('wizard-icon').className = 'ti ti-edit';
+        document.getElementById('wizard-title-text').innerHTML = `Edit user — <strong>${user.fullName || user.FullName}</strong> <span class="badge b-a" style="font-size:10px;margin-left:6px">Editing</span>`;
+        document.getElementById('btn-new-user-mode').style.display = 'inline-flex';
+
+        // Highlight selected row in table
+        document.querySelectorAll('.user-row').forEach(r => r.classList.remove('selected'));
+        const row = document.getElementById('user-row-' + userId);
+        if (row) row.classList.add('selected');
+
+        // Populate Step 1: Identity
+        document.getElementById('wiz-firstname').value = user.firstName || user.FirstName || '';
+        document.getElementById('wiz-lastname').value = user.lastName || user.LastName || '';
+        document.getElementById('wiz-email').value = user.email || user.Email || '';
+        document.getElementById('wiz-staffid').value = user.staffId || user.StaffId || '';
+        document.getElementById('wiz-phone').value = user.phone || user.Phone || '';
+        document.getElementById('wiz-language').value = user.preferredLanguage || user.PreferredLanguage || 'en';
+
+        // Populate Step 2: Role, Dept & Doctypes
+        document.getElementById('wiz-role').value = user.roleId || user.RoleId || '';
+        document.getElementById('wiz-dept').value = user.departmentId || user.DepartmentId || '';
+        document.getElementById('wiz-status').value = user.accountStatus || user.AccountStatus || 'active';
+        
+        const expiry = user.accessExpiresAt || user.AccessExpiresAt;
+        document.getElementById('wiz-expiry').value = expiry ? expiry.substring(0, 10) : '';
+
+        const specs = user.docTypeSpecialisations || user.DocTypeSpecialisations || [];
+        document.querySelectorAll('#wiz-doctypes-group input[type="checkbox"]').forEach(cb => {
+            cb.checked = specs.includes(cb.value);
+        });
+
+        // Step 3: Password for edit is optional
+        document.getElementById('wiz-pass-label').textContent = 'New password (optional)';
+        document.getElementById('wiz-password').value = '';
+        document.getElementById('wiz-password').placeholder = 'Leave blank to keep existing password';
+        document.getElementById('wiz-pass-hint').textContent = 'Leave empty to preserve existing password';
+
+        // Confirm box message
+        document.getElementById('wiz-confirm-text').textContent = 'Review updated details before saving changes.';
+
+        // Render role screen access matrix
+        renderScreenAccessWizard();
+
+        // Jump to Step 1 in Wizard & scroll up
+        currentStep = 1;
+        updateWizardUI();
+
+        wizard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Switch Wizard back to Create New User mode
+    function resetToNewUserMode() {
+        editingUserId = null;
+
+        document.getElementById('wizard-icon').className = 'ti ti-user-plus';
+        document.getElementById('wizard-title-text').textContent = 'Create new user';
+        document.getElementById('btn-new-user-mode').style.display = 'none';
+
+        document.querySelectorAll('.user-row').forEach(r => r.classList.remove('selected'));
+
+        // Reset inputs
+        document.getElementById('wiz-firstname').value = '';
+        document.getElementById('wiz-lastname').value = '';
+        document.getElementById('wiz-email').value = '';
+        document.getElementById('wiz-staffid').value = '';
+        document.getElementById('wiz-phone').value = '';
+        document.getElementById('wiz-language').value = 'en';
+
+        const roleSelect = document.getElementById('wiz-role');
+        if (roleSelect.options.length > 0) roleSelect.selectedIndex = 0;
+        document.getElementById('wiz-dept').value = '';
+        document.getElementById('wiz-status').value = 'active';
+        document.getElementById('wiz-expiry').value = '';
+
+        document.querySelectorAll('#wiz-doctypes-group input[type="checkbox"]').forEach((cb, idx) => {
+            cb.checked = idx === 0; // Check 'case_law' by default
+        });
+
+        document.getElementById('wiz-pass-label').textContent = 'Temporary password';
+        document.getElementById('wiz-password').value = 'TempPass2026!';
+        document.getElementById('wiz-password').placeholder = '';
+        document.getElementById('wiz-pass-hint').textContent = 'User will be required to change on first login';
+
+        document.getElementById('wiz-confirm-text').textContent = 'Review all details before creating the account. Role and access can be changed later from this screen.';
+
+        currentStep = 1;
+        updateWizardUI();
+        renderScreenAccessWizard();
+    }
+
+    function startNewUserFromTopbar() {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot create users.');
+            return;
+        }
+        const wizard = document.getElementById('wizard-card');
+        wizard.style.display = 'block';
+        resetToNewUserMode();
+        wizard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function toggleWizard() {
+        const wizard = document.getElementById('wizard-card');
+        wizard.style.display = wizard.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function changeStep(delta) {
+        if (delta > 0 && !validateStep(currentStep)) return;
+
+        if (currentStep === totalSteps && delta > 0) {
+            submitWizard();
+            return;
+        }
+
+        currentStep = Math.max(1, Math.min(totalSteps, currentStep + delta));
+        updateWizardUI();
+    }
+
+    function validateStep(step) {
+        if (step === 1) {
+            const firstName = document.getElementById('wiz-firstname').value.trim();
+            const lastName = document.getElementById('wiz-lastname').value.trim();
+            const email = document.getElementById('wiz-email').value.trim();
+
+            if (!firstName || !lastName || !email) {
+                alert('Please enter First name, Last name, and Email.');
+                return false;
+            }
+            if (!email.includes('@@')) {
+                alert('Please enter a valid email address.');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function updateWizardUI() {
+        for (let i = 1; i <= totalSteps; i++) {
+            document.getElementById(`wbody${i}`).classList.toggle('active', i === currentStep);
+            const node = document.getElementById(`ws${i}`);
+            const label = document.getElementById(`wlbl${i}`);
+
+            if (i < currentStep) {
+                node.className = 'w-node w-done';
+                node.textContent = '✓';
+                label.className = 'w-label done';
+            } else if (i === currentStep) {
+                node.className = 'w-node w-active';
+                node.textContent = i;
+                label.className = 'w-label active';
+            } else {
+                node.className = 'w-node w-idle';
+                node.textContent = i;
+                label.className = 'w-label';
+            }
+        }
+
+        // Connecting lines between steps (wl1: 1->2, wl2: 2->3, wl3: 3->4)
+        const l1 = document.getElementById('wl1');
+        if (l1) l1.className = 'w-line ' + (currentStep > 1 ? 'done' : '');
+
+        const l2 = document.getElementById('wl2');
+        if (l2) l2.className = 'w-line ' + (currentStep > 2 ? 'done' : '');
+
+        const l3 = document.getElementById('wl3');
+        if (l3) l3.className = 'w-line ' + (currentStep > 3 ? 'done' : '');
+
+        document.getElementById('wiz-back').disabled = currentStep === 1;
+        document.getElementById('wiz-step-text').textContent = `Step ${currentStep} of ${totalSteps}`;
+
+        const nextBtn = document.getElementById('wiz-btn-next');
+        if (currentStep === totalSteps) {
+            if (editingUserId) {
+                nextBtn.textContent = 'Save changes ✓';
+                nextBtn.className = 'btn btn-sm btn-accent';
+            } else {
+                nextBtn.textContent = 'Create user ✓';
+                nextBtn.className = 'btn btn-sm btn-primary';
+            }
+            populateSummary();
+        } else {
+            nextBtn.textContent = 'Next →';
+            nextBtn.className = 'btn btn-sm btn-accent';
+        }
+    }
+
+    function goToStep(step) {
+        if (step > currentStep && !validateStep(currentStep)) return;
+        currentStep = step;
+        updateWizardUI();
+    }
+
+    function populateSummary() {
+        const fn = document.getElementById('wiz-firstname').value.trim();
+        const ln = document.getElementById('wiz-lastname').value.trim();
+        document.getElementById('sum-name').textContent = `${fn} ${ln}`;
+        document.getElementById('sum-email').textContent = document.getElementById('wiz-email').value.trim();
+
+        const roleSelect = document.getElementById('wiz-role');
+        document.getElementById('sum-role').textContent = roleSelect.options[roleSelect.selectedIndex]?.getAttribute('data-name') || 'Role';
+
+        const deptSelect = document.getElementById('wiz-dept');
+        document.getElementById('sum-dept').textContent = deptSelect.options[deptSelect.selectedIndex]?.getAttribute('data-name') || 'Unassigned';
+
+        const checkedDocs = Array.from(document.querySelectorAll('input[name="wiz-doc-type"]:checked')).map(cb => cb.value);
+        document.getElementById('sum-doctypes').textContent = checkedDocs.length ? checkedDocs.join(', ') : 'None';
+
+        const statusSelect = document.getElementById('wiz-status');
+        document.getElementById('sum-status').textContent = statusSelect.options[statusSelect.selectedIndex]?.text || 'Active';
+
+        const overrides = [];
+        document.querySelectorAll('.wiz-screen-perm-select').forEach(sel => {
+            if (sel.value !== 'inherited') {
+                const sId = sel.getAttribute('data-screen-id');
+                const s = screensData.find(x => (x.screenId || x.ScreenId) === sId);
+                const name = s ? (s.screenName || s.ScreenName) : 'Screen';
+                overrides.push(`${name}: <strong>${sel.value.toUpperCase()}</strong>`);
+            }
+        });
+        const sumOverridesEl = document.getElementById('sum-overrides');
+        if (sumOverridesEl) {
+            if (overrides.length > 0) {
+                sumOverridesEl.innerHTML = `<span style="color:var(--ta);font-weight:600"><i class="ti ti-check"></i> ${overrides.length} custom override(s) configured:</span><br>` + overrides.join(' • ');
+            } else {
+                sumOverridesEl.textContent = 'None (inherits default role permissions)';
+            }
+        }
+    }
+
+    function getSelectedRolePermissions() {
+        const roleId = document.getElementById('wiz-role')?.value;
+        const role = rolesData.find(r => (r.roleId || r.RoleId) === roleId);
+        const map = {};
+        if (role) {
+            const perms = role.permissions || role.Permissions || [];
+            perms.forEach(p => {
+                map[p.screenId || p.ScreenId] = (p.permLevel || p.PermLevel || 'none').toLowerCase();
+            });
+        }
+        return { roleName: role?.roleName || role?.RoleName || 'Role', perms: map };
+    }
+
+    function renderScreenAccessWizard() {
+        const container = document.getElementById('wiz-screen-access-container');
+        if (!container) return;
+
+        const { roleName, perms } = getSelectedRolePermissions();
+        const roleBadge = document.getElementById('wiz-active-role-badge');
+        if (roleBadge) roleBadge.textContent = `Role Defaults: ${roleName}`;
+
+        // Group screens
+        const groups = {};
+        screensData.forEach(s => {
+            const grp = s.screenGroup || s.ScreenGroup || 'Other';
+            if (!groups[grp]) groups[grp] = [];
+            groups[grp].push(s);
+        });
+
+        let html = '';
+        for (const [groupName, screens] of Object.entries(groups)) {
+            let groupIcon = 'ti-folder';
+            if (groupName === 'Pipeline') groupIcon = 'ti-git-branch';
+            else if (groupName === 'Administration') groupIcon = 'ti-settings';
+            else if (groupName === 'Communication') groupIcon = 'ti-mail-fast';
+            else if (groupName === 'AI and ML') groupIcon = 'ti-brain';
+
+            html += `
+                <div style="font-size:10.5px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 4px;display:flex;align-items:center;gap:5px">
+                    <i class="ti ${groupIcon}" style="color:var(--ta);font-size:12px"></i>
+                    <span>${groupName} screens</span>
+                </div>
+            `;
+
+            screens.forEach(s => {
+                const sId = s.screenId || s.ScreenId;
+                const sName = s.screenName || s.ScreenName;
+                const sIcon = s.iconName || s.IconName || 'ti-file';
+                const rolePerm = perms[sId] || 'none';
+
+                let roleBadgeClass = 'b-n';
+                if (rolePerm === 'admin') roleBadgeClass = 'b-d';
+                else if (rolePerm === 'approve') roleBadgeClass = 'b-p';
+                else if (rolePerm === 'edit') roleBadgeClass = 'b-a';
+                else if (rolePerm === 'view') roleBadgeClass = 'b-s';
+
+                html += `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:3px;background:var(--sf);border:0.5px solid var(--bd);border-radius:4px;gap:8px">
+                        <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
+                            <i class="ti ${sIcon}" style="color:var(--tm);font-size:13px;width:16px;text-align:center"></i>
+                            <span style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sName}</span>
+                            <span class="badge ${roleBadgeClass}" style="font-size:9.5px;padding:1px 5px">Role: ${rolePerm}</span>
+                            <span class="badge b-w wiz-override-flag" id="override-flag-${sId}" style="display:none;font-size:9.5px;padding:1px 5px">Custom</span>
+                        </div>
+                        <div style="flex-shrink:0;width:150px">
+                            <select class="form-select form-select-sm wiz-screen-perm-select" data-screen-id="${sId}" data-role-perm="${rolePerm}" onchange="handleScreenOverrideChange(this)" style="padding:3px 6px;font-size:11px;height:26px">
+                                <option value="inherited">Inherit (${rolePerm})</option>
+                                <option value="none">None (Deny)</option>
+                                <option value="view">View</option>
+                                <option value="edit">Edit</option>
+                                <option value="approve">Approve</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        container.innerHTML = html;
+    }
+
+    function handleScreenOverrideChange(sel) {
+        const sId = sel.getAttribute('data-screen-id');
+        const flag = document.getElementById(`override-flag-${sId}`);
+        if (flag) {
+            flag.style.display = sel.value === 'inherited' ? 'none' : 'inline-flex';
+        }
+    }
+
+    function generatePassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@@#$%';
+        let pwd = '';
+        for (let i = 0; i < 12; i++) {
+            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('wiz-password').value = pwd;
+    }
+
+    async function submitWizard() {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot save user changes.');
+            return;
+        }
+
+        const nextBtn = document.getElementById('wiz-btn-next');
+        nextBtn.disabled = true;
+        nextBtn.innerHTML = '<i class="ti ti-loader animate-spin"></i> Processing...';
+
+        const docTypes = Array.from(document.querySelectorAll('input[name="wiz-doc-type"]:checked')).map(cb => cb.value);
+
+        if (editingUserId) {
+            // EDIT / UPDATE EXISTING USER
+            const payload = {
+                userId: editingUserId,
+                firstName: document.getElementById('wiz-firstname').value.trim(),
+                lastName: document.getElementById('wiz-lastname').value.trim(),
+                email: document.getElementById('wiz-email').value.trim(),
+                staffId: document.getElementById('wiz-staffid').value.trim() || null,
+                phone: document.getElementById('wiz-phone').value.trim() || null,
+                preferredLanguage: document.getElementById('wiz-language').value,
+                roleId: document.getElementById('wiz-role').value,
+                departmentId: document.getElementById('wiz-dept').value || null,
+                docTypeSpecialisations: docTypes,
+                accountStatus: document.getElementById('wiz-status').value,
+                accessExpiresAt: document.getElementById('wiz-expiry').value || null,
+                newPassword: document.getElementById('wiz-password').value.trim() || null
+            };
+
+            try {
+                const resp = await fetch('?handler=UpdateUserJson', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const res = await resp.json();
+                if (resp.ok && res.success) {
+                    window.location.reload();
+                    return;
+                } else {
+                    alert('Error updating user: ' + (res.message || 'Failed to update user.'));
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Save changes ✓';
+                    return;
+                }
+            } catch (e) {
+                alert('Request failed: ' + e.message);
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'Save changes ✓';
+                return;
+            }
+        } else {
+            // CREATE NEW USER WITH CUSTOM SCREEN ACCESS OVERRIDES
+            const screenOverrides = [];
+            document.querySelectorAll('.wiz-screen-perm-select').forEach(sel => {
+                const sId = sel.getAttribute('data-screen-id');
+                const perm = sel.value;
+                if (perm && perm !== 'inherited') {
+                    screenOverrides.push({ screenId: sId, permLevel: perm });
+                }
+            });
+
+            const sendWelcome = document.getElementById('wiz-send-welcome-toggle') ? document.getElementById('wiz-send-welcome-toggle').classList.contains('on') : true;
+
+            const payload = {
+                firstName: document.getElementById('wiz-firstname').value.trim(),
+                lastName: document.getElementById('wiz-lastname').value.trim(),
+                email: document.getElementById('wiz-email').value.trim(),
+                staffId: document.getElementById('wiz-staffid').value.trim() || null,
+                phone: document.getElementById('wiz-phone').value.trim() || null,
+                preferredLanguage: document.getElementById('wiz-language').value,
+                roleId: document.getElementById('wiz-role').value,
+                departmentId: document.getElementById('wiz-dept').value || null,
+                docTypeSpecialisations: docTypes,
+                accountStatus: document.getElementById('wiz-status').value,
+                accessExpiresAt: document.getElementById('wiz-expiry').value || null,
+                password: document.getElementById('wiz-password').value,
+                sendWelcomeEmail: sendWelcome,
+                screenOverrides: screenOverrides
+            };
+
+            try {
+                const resp = await fetch('?handler=CreateUserJson', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (resp.ok) {
+                    window.location.reload();
+                } else {
+                    const err = await resp.json();
+                    alert('Error creating user: ' + (err.message || 'Unknown error'));
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Create user ✓';
+                }
+            } catch (e) {
+                alert('Request failed: ' + e.message);
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'Create user ✓';
+            }
+        }
+    }
+
+
+    // --- CHANGE PASSWORD MODAL ---
+    function openChangePasswordModal(userId, fullName, email) {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot change passwords.');
+            return;
+        }
+        document.getElementById('pwd-user-id').value = userId;
+        document.getElementById('pwd-user-name').textContent = fullName || 'User';
+        document.getElementById('pwd-user-email').textContent = email || '';
+        document.getElementById('pwd-new-password').value = '';
+        document.getElementById('pwd-new-password').type = 'password';
+        document.getElementById('pwd-confirm-password').value = '';
+        document.getElementById('pwd-confirm-password').type = 'password';
+        document.getElementById('pwd-must-change').checked = true;
+
+        document.getElementById('modal-change-password').style.display = 'flex';
+    }
+
+    function closeChangePasswordModal() {
+        document.getElementById('modal-change-password').style.display = 'none';
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+        const inp = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            icon.className = 'ti ti-eye-off';
+        } else {
+            inp.type = 'password';
+            icon.className = 'ti ti-eye';
+        }
+    }
+
+    function generateChangePassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@@#$%';
+        let pwd = '';
+        for (let i = 0; i < 12; i++) {
+            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const inp1 = document.getElementById('pwd-new-password');
+        const inp2 = document.getElementById('pwd-confirm-password');
+        inp1.value = pwd;
+        inp1.type = 'text';
+        inp2.value = pwd;
+        inp2.type = 'text';
+        document.getElementById('pwd-toggle-icon').className = 'ti ti-eye-off';
+    }
+
+    async function submitChangePasswordModal() {
+        if (!canEdit) return;
+
+        const userId = document.getElementById('pwd-user-id').value;
+        const newPassword = document.getElementById('pwd-new-password').value;
+        const confirmPassword = document.getElementById('pwd-confirm-password').value;
+        const mustChange = document.getElementById('pwd-must-change').checked;
+
+        if (!newPassword) {
+            alert('Please enter a new password.');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match. Please verify.');
+            return;
+        }
+
+        const btn = document.getElementById('btn-save-password');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader animate-spin"></i> Updating...';
+
+        try {
+            const resp = await fetch('?handler=AdminResetPasswordJson', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify({ userId, newPassword, mustChange })
+            });
+
+            const res = await resp.json();
+            if (resp.ok && res.success) {
+                alert('Password has been successfully changed!');
+                closeChangePasswordModal();
+                window.location.reload();
+            } else {
+                alert('Error updating password: ' + (res.message || 'Failed to update password.'));
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-check"></i> Update password';
+            }
+        } catch (e) {
+            alert('Request failed: ' + e.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-check"></i> Update password';
+        }
+    }
+
+    // --- TOGGLE USER LOCK ---
+    async function toggleUserLock(userId, userName, currentStatus) {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot lock or unlock users.');
+            return;
+        }
+        const actionVerb = currentStatus === 'locked' ? 'unlock' : 'lock';
+        if (!confirm(`Are you sure you want to ${actionVerb} access for ${userName}?`)) return;
+
+        try {
+            const resp = await fetch('?handler=ToggleUserStatusJson', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify({ userId })
+            });
+            const res = await resp.json();
+            if (resp.ok && res.success) {
+                window.location.reload();
+            } else {
+                alert('Error: ' + (res.message || 'Failed to toggle account status.'));
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+        }
+    }
+
+    function filterUsers() {
+        const role = document.getElementById('filter-role').value;
+        const dept = document.getElementById('filter-dept').value;
+
+        document.querySelectorAll('.user-row').forEach(row => {
+            const rowRole = row.getAttribute('data-role');
+            const rowDept = row.getAttribute('data-dept');
+            const matchRole = !role || rowRole === role;
+            const matchDept = !dept || rowDept === dept;
+            row.style.display = matchRole && matchDept ? '' : 'none';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const roleSel = document.getElementById('wiz-role');
+        if (roleSel) {
+            roleSel.addEventListener('change', () => {
+                renderScreenAccessWizard();
+            });
+        }
+        renderScreenAccessWizard();
+    });
+</script>
+}

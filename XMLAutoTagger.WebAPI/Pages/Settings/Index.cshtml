@@ -1,0 +1,226 @@
+@page
+@model XMLAutoTagger.WebAPI.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "Settings — My Profile";
+    ViewData["ActivePage"] = "Settings";
+    ViewData["PageHeading"] = "Account settings";
+    ViewData["PageSubtitle"] = "Manage your profile details and communication preferences";
+    Layout = "_Layout";
+    var user = Model.CurrentUser;
+}
+
+@Html.AntiForgeryToken()
+
+<!-- Settings Sub-tabs -->
+<div style="display:flex;gap:4px;border-bottom:0.5px solid var(--bd);margin:-18px -20px 18px;padding:0 20px;background:var(--sf)">
+    <a href="/Settings" class="tab active" style="text-decoration:none"><i class="ti ti-user" style="font-size:13px"></i>User profile</a>
+    <a href="/Settings/ChangePassword" class="tab" style="text-decoration:none"><i class="ti ti-key" style="font-size:13px"></i>Change password</a>
+    <a href="/Settings/Communication" class="tab" style="text-decoration:none"><i class="ti ti-mail-fast" style="font-size:13px"></i>Communication channels</a>
+</div>
+
+<!-- TOP HERO / PROFILE SUMMARY CARD -->
+<div class="card" style="margin-bottom:16px;padding:16px 20px;background:linear-gradient(135deg, #ffffff 0%, #f9f8f6 100%)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+        <div style="display:flex;align-items:center;gap:14px">
+            <div class="av" style="width:52px;height:52px;font-size:18px;font-weight:600;background:@(user?.AvatarColourHex ?? "#185FA5");color:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.1)">
+                @(user?.AvatarInitials ?? "U")
+            </div>
+            <div>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:16px;font-weight:600;color:var(--tp)">@(user?.FullName ?? "User")</span>
+                    <span class="badge b-p" style="font-size:11px;font-weight:600">@(user?.RoleName ?? "Role")</span>
+                    @if (user?.AccountStatus == "active")
+                    {
+                        <span class="badge b-s" style="font-size:10px">Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge b-w" style="font-size:10px">@(user?.AccountStatus ?? "Active")</span>
+                    }
+                </div>
+                <div style="font-size:12px;color:var(--ts);margin-top:2px;display:flex;gap:14px;flex-wrap:wrap">
+                    <span><i class="ti ti-mail" style="font-size:12px;color:var(--tm);margin-right:3px"></i>@(user?.Email ?? "")</span>
+                    <span><i class="ti ti-building" style="font-size:12px;color:var(--tm);margin-right:3px"></i>@(user?.DepartmentName ?? "Unassigned")</span>
+                    <span><i class="ti ti-clock" style="font-size:12px;color:var(--tm);margin-right:3px"></i>Last login: @(user?.LastLoginAt.HasValue == true ? user.LastLoginAt.Value.ToString("dd MMM yyyy, HH:mm") : "Never")</span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <a href="/Settings/ChangePassword" class="btn btn-sm btn-accent" style="text-decoration:none">
+                <i class="ti ti-key" style="font-size:12px"></i>
+                <span>Change password</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.2fr 1.8fr;gap:16px" id="settings-grid">
+    <!-- LEFT CARD: COMMUNICATION (EDITABLE) -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-phone" style="color:var(--ta)"></i><span>Communication details</span>
+            </div>
+            <span class="badge b-a" style="font-size:10px"><i class="ti ti-edit"></i> Editable</span>
+        </div>
+        <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+                <i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span>You can update your personal contact phone number. All other identity attributes are managed by your administrator.</span>
+            </div>
+
+            <div id="phone-alert" style="display:none;margin-bottom:12px"></div>
+
+            <div class="form-row">
+                <div class="form-label">Phone number <span class="req">*</span></div>
+                <div style="position:relative">
+                    <input type="tel" class="form-input" id="input-phone" value="@(user?.Phone ?? "")" placeholder="e.g. +60 12-345 6789" style="padding-left:32px">
+                    <i class="ti ti-phone" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:13px"></i>
+                </div>
+                <div class="form-hint">Used for SMS dispatch notifications, workflow escalations, and system alerts.</div>
+            </div>
+
+            <div class="form-row" style="margin-top:16px">
+                <div class="form-label">Preferred language <span class="req">*</span></div>
+                <div style="position:relative">
+                    <select class="form-select" id="input-language" style="padding-left:32px">
+                        <option value="en" selected="@(user?.PreferredLanguage == "en" ? "selected" : null)">English</option>
+                        <option value="ms" selected="@(user?.PreferredLanguage == "ms" ? "selected" : null)">Bahasa Melayu</option>
+                    </select>
+                    <i class="ti ti-language" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:14px"></i>
+                </div>
+                <div class="form-hint">Selected language for document tagging annotations, alerts, and system interface.</div>
+            </div>
+
+            <div style="margin-top:20px;display:flex;justify-content:flex-end">
+                <button type="button" class="btn btn-sm btn-accent" id="btn-save-phone" onclick="updateProfilePreferences()">
+                    <i class="ti ti-device-floppy" style="font-size:12px"></i>
+                    <span>Save changes</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT CARD: USER DETAILS (READ-ONLY) -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-id" style="color:var(--ta)"></i><span>User account details</span>
+            </div>
+            <span class="badge b-n" style="font-size:10px"><i class="ti ti-lock"></i> Managed by Admin</span>
+        </div>
+        <div class="card-body">
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">First name</div>
+                    <div style="position:relative">
+                        <input class="form-input" value="@(user?.FirstName ?? "")" disabled style="background:var(--s2);cursor:not-allowed;padding-right:26px">
+                        <i class="ti ti-lock" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:12px"></i>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Last name</div>
+                    <div style="position:relative">
+                        <input class="form-input" value="@(user?.LastName ?? "")" disabled style="background:var(--s2);cursor:not-allowed;padding-right:26px">
+                        <i class="ti ti-lock" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:12px"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Corporate email address</div>
+                <div style="position:relative">
+                    <input class="form-input" value="@(user?.Email ?? "")" disabled style="background:var(--s2);cursor:not-allowed;padding-right:26px">
+                    <i class="ti ti-lock" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:12px"></i>
+                </div>
+                <div class="form-hint">Used for signing into LegalXML and receiving official notifications.</div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Staff / Employee ID</div>
+                    <input class="form-input" value="@(string.IsNullOrEmpty(user?.StaffId) ? "Not assigned" : user.StaffId)" disabled style="background:var(--s2);cursor:not-allowed">
+                </div>
+                <div class="form-row">
+                    <div class="form-label">System Role</div>
+                    <input class="form-input" value="@(user?.RoleName ?? "")" disabled style="background:var(--s2);cursor:not-allowed">
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Assigned Department</div>
+                    <input class="form-input" value="@(user?.DepartmentName ?? "Unassigned")" disabled style="background:var(--s2);cursor:not-allowed">
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Document specialisations</div>
+                    <input class="form-input" value="@(user?.SpecialisationText ?? "General")" disabled style="background:var(--s2);cursor:not-allowed">
+                </div>
+            </div>
+
+            <div class="warn-box" style="margin-top:14px;margin-bottom:0">
+                <i class="ti ti-shield-lock" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span>These corporate identity fields are locked by system policy. If any information needs correction, please contact your department manager or System Administrator.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function getCsrfToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    }
+
+    async function updateProfilePreferences() {
+        const phoneInput = document.getElementById('input-phone');
+        const langSelect = document.getElementById('input-language');
+        const phone = phoneInput ? phoneInput.value.trim() : '';
+        const lang = langSelect ? langSelect.value : 'en';
+        const alertBox = document.getElementById('phone-alert');
+        const btn = document.getElementById('btn-save-phone');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader animate-spin" style="font-size:12px"></i><span>Saving...</span>';
+
+        alertBox.style.display = 'none';
+
+        try {
+            const resp = await fetch('?handler=UpdatePhoneJson', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify({ phone: phone, preferredLanguage: lang })
+            });
+
+            const data = await resp.json();
+
+            if (resp.ok && data.success) {
+                alertBox.className = 'badge b-s';
+                alertBox.style.display = 'flex';
+                alertBox.style.padding = '8px 12px';
+                alertBox.style.fontSize = '12px';
+                alertBox.innerHTML = '<i class="ti ti-check" style="font-size:14px"></i><span>' + (data.message || 'Preferences updated successfully.') + '</span>';
+            } else {
+                alertBox.className = 'badge b-d';
+                alertBox.style.display = 'flex';
+                alertBox.style.padding = '8px 12px';
+                alertBox.style.fontSize = '12px';
+                alertBox.innerHTML = '<i class="ti ti-alert-triangle" style="font-size:14px"></i><span>' + (data.message || 'Failed to update preferences.') + '</span>';
+            }
+        } catch (e) {
+            alertBox.className = 'badge b-d';
+            alertBox.style.display = 'flex';
+            alertBox.style.padding = '8px 12px';
+            alertBox.style.fontSize = '12px';
+            alertBox.innerHTML = '<i class="ti ti-alert-triangle" style="font-size:14px"></i><span>Network error: ' + e.message + '</span>';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:12px"></i><span>Save changes</span>';
+        }
+    }
+</script>
+}

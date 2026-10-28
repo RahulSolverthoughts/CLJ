@@ -1,0 +1,406 @@
+@page
+@model XMLAutoTagger.WebAPI.Pages.ScreenAccess.IndexModel
+@{
+    ViewData["Title"] = "Screen Access";
+    ViewData["ActivePage"] = "ScreenAccess";
+    ViewData["PageHeading"] = "Screen access assignment";
+    ViewData["PageSubtitle"] = "Assign granular per-user screen permission overrides";
+    Layout = "_Layout";
+}
+
+@Html.AntiForgeryToken()
+
+@section TopbarActions {
+    @if (Model.CanEdit)
+    {
+        <button type="button" class="btn btn-sm" id="btn-reset" onclick="resetToRoleDefaults()">
+            <i class="ti ti-refresh" style="font-size:11px"></i>Reset to role
+        </button>
+        <button type="button" class="btn btn-sm btn-accent" id="btn-save" onclick="saveAccessOverrides()">
+            <i class="ti ti-device-floppy" style="font-size:11px"></i>Save access
+        </button>
+    }
+    else
+    {
+        <span class="badge b-s" style="padding:5px 10px;font-size:11.5px;gap:5px"><i class="ti ti-eye"></i> View only</span>
+    }
+}
+
+<div class="sidebar-layout">
+    <!-- LEFT: User selector & Role info -->
+    <div style="display:flex;flex-direction:column;gap:10px;position:relative">
+        <div class="card" style="padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Select User</div>
+            <select class="form-select" id="select-user" onchange="onUserSelectionChanged()" style="margin-bottom:8px">
+                @foreach (var user in Model.Users)
+                {
+                    var isSelected = Model.InitialUserAccess != null && user.UserId == Model.InitialUserAccess.UserId;
+                    <option value="@user.UserId" selected="@(isSelected ? "selected" : null)">@user.FullName (@user.Email)</option>
+                }
+            </select>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border-radius:6px;padding:8px 10px">
+                <div class="av av-bl" id="user-avatar" style="width:32px;height:32px;font-size:11px">
+                    @(Model.InitialUserAccess?.AvatarInitials ?? "U")
+                </div>
+                <div style="min-width:0;flex:1">
+                    <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="user-name">
+                        @(Model.InitialUserAccess?.FullName ?? "Select user")
+                    </div>
+                    <div style="font-size:10.5px;color:var(--tm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="user-meta">
+                        @(Model.InitialUserAccess != null ? $"{Model.InitialUserAccess.RoleName} · {Model.InitialUserAccess.DepartmentName}" : "")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Base role defaults</div>
+            <div style="font-size:12px;color:var(--ts);margin-bottom:6px">
+                Inheriting from <span class="badge b-p" id="badge-base-role">@(Model.InitialUserAccess?.RoleName ?? "Role")</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;font-size:11px;max-height:220px;overflow-y:auto" id="base-perms-list">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        @if (!Model.CanEdit)
+        {
+            <div class="warn-box" style="margin-bottom:0">
+                <i class="ti ti-lock" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span>You have <strong>View-only</strong> access to User Management. Making changes to screen permissions is restricted.</span>
+            </div>
+        }
+        else
+        {
+            <div class="info-box" style="margin-bottom:0">
+                <i class="ti ti-info-circle" style="font-size:12px;flex-shrink:0;margin-top:1px"></i>
+                <span>Overrides set here apply specifically to this user and take precedence over role permissions.</span>
+            </div>
+        }
+    </div>
+
+    <!-- RIGHT: Access tree -->
+    <div style="position:relative">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:500">
+                Screen access — <span id="access-user-title">@(Model.InitialUserAccess?.FullName ?? "")</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+                @if (Model.CanEdit)
+                {
+                    <button class="btn btn-xs" onclick="resetToRoleDefaults()"><i class="ti ti-refresh" style="font-size:10px"></i>Reset to role</button>
+                    <button class="btn btn-xs btn-accent" onclick="saveAccessOverrides()"><i class="ti ti-device-floppy" style="font-size:10px"></i>Save access</button>
+                }
+                else
+                {
+                    <span class="badge b-s" style="font-size:10px"><i class="ti ti-eye"></i> Read-only mode</span>
+                }
+            </div>
+        </div>
+
+        <!-- Groups Container -->
+        <div id="screen-groups-container">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Initial JSON Cache -->
+<script id="initial-access-json" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.InitialUserAccess, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+
+@section Scripts {
+<script>
+    function normalizeAccess(raw) {
+        if (!raw) return null;
+        const rawScreens = raw.screens || raw.Screens || [];
+        const screens = rawScreens.map(s => ({
+            screenId: s.screenId || s.ScreenId,
+            screenCode: s.screenCode || s.ScreenCode || '',
+            screenName: s.screenName || s.ScreenName || '',
+            screenGroup: s.screenGroup || s.ScreenGroup || 'Pipeline',
+            iconName: s.iconName || s.IconName || 'ti-file',
+            routePath: s.routePath || s.RoutePath || '/',
+            rolePermLevel: (s.rolePermLevel || s.RolePermLevel || 'none').toLowerCase(),
+            overridePermLevel: s.overridePermLevel || s.OverridePermLevel || null,
+            effectivePermLevel: (s.effectivePermLevel || s.EffectivePermLevel || s.rolePermLevel || s.RolePermLevel || 'none').toLowerCase(),
+            isOverridden: s.isOverridden !== undefined ? s.isOverridden : (s.IsOverridden !== undefined ? s.IsOverridden : false)
+        }));
+
+        return {
+            userId: raw.userId || raw.UserId,
+            fullName: raw.fullName || raw.FullName || '',
+            email: raw.email || raw.Email || '',
+            roleName: raw.roleName || raw.RoleName || '',
+            departmentName: raw.departmentName || raw.DepartmentName || 'Unassigned',
+            avatarInitials: raw.avatarInitials || raw.AvatarInitials || 'U',
+            screens: screens
+        };
+    }
+
+    let initialJsonText = document.getElementById('initial-access-json')?.textContent?.trim();
+    let initialParsed = (initialJsonText && initialJsonText !== 'null') ? JSON.parse(initialJsonText) : null;
+    let currentAccess = normalizeAccess(initialParsed);
+
+    const permLevels = ['view', 'edit', 'approve', 'admin'];
+    const levelRanks = { 'none': 0, 'view': 1, 'edit': 2, 'approve': 3, 'admin': 4 };
+
+    // screenId -> chosen perm level ('none', 'view', 'edit', 'approve', 'admin')
+    let activeLevels = {};
+
+    function getCsrfToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    }
+
+    const canEdit = @(Model.CanEdit ? "true" : "false");
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (currentAccess) {
+            loadUserAccessState(currentAccess);
+        } else {
+            const select = document.getElementById('select-user');
+            if (select && select.value) {
+                onUserSelectionChanged();
+            }
+        }
+    });
+
+    async function onUserSelectionChanged() {
+        const userId = document.getElementById('select-user').value;
+        if (!userId) return;
+
+        try {
+            const resp = await fetch(`?handler=UserAccessJson&userId=${userId}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                loadUserAccessState(data);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function loadUserAccessState(raw) {
+        const data = normalizeAccess(raw);
+        if (!data) return;
+
+        currentAccess = data;
+        activeLevels = {};
+
+        // Update Left Panel
+        document.getElementById('user-avatar').textContent = data.avatarInitials || 'U';
+        document.getElementById('user-name').textContent = data.fullName;
+        document.getElementById('user-meta').textContent = `${data.roleName} · ${data.departmentName}`;
+        document.getElementById('badge-base-role').textContent = data.roleName || 'Role';
+        document.getElementById('access-user-title').textContent = data.fullName;
+
+        // Base Role Defaults List
+        const baseListEl = document.getElementById('base-perms-list');
+        baseListEl.innerHTML = data.screens.map(s => {
+            const lvlBadge = getRoleBadge(s.rolePermLevel);
+            return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0">
+                    <span style="color:var(--ts)">${s.screenName}</span>
+                    <span class="badge ${lvlBadge.cls}" style="font-size:9.5px">${lvlBadge.text}</span>
+                </div>
+            `;
+        }).join('');
+
+        // Store initial active levels
+        data.screens.forEach(s => {
+            activeLevels[s.screenId] = (s.effectivePermLevel || 'none').toLowerCase();
+        });
+
+        renderAccessTree();
+    }
+
+    function getRoleBadge(lvl) {
+        lvl = (lvl || 'none').toLowerCase();
+        if (lvl === 'admin') return { cls: 'b-d', text: 'Admin' };
+        if (lvl === 'approve') return { cls: 'b-p', text: 'Approve' };
+        if (lvl === 'edit') return { cls: 'b-a', text: 'Edit' };
+        if (lvl === 'view') return { cls: 'b-s', text: 'View' };
+        return { cls: 'b-n', text: 'None' };
+    }
+
+    function renderAccessTree() {
+        const container = document.getElementById('screen-groups-container');
+        container.innerHTML = '';
+
+        if (!currentAccess || !currentAccess.screens) return;
+
+        // Group screens
+        const groups = {};
+        currentAccess.screens.forEach(s => {
+            const grp = s.screenGroup || 'Pipeline';
+            if (!groups[grp]) groups[grp] = [];
+            groups[grp].push(s);
+        });
+
+        for (const [groupName, screens] of Object.entries(groups)) {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'access-group';
+
+            let groupIcon = 'ti-git-branch';
+            if (groupName === 'Administration') groupIcon = 'ti-settings';
+            else if (groupName === 'Communication') groupIcon = 'ti-mail-fast';
+            else if (groupName === 'AI and ML') groupIcon = 'ti-brain';
+
+            let headerHtml = `
+                <div class="access-group-hdr">
+                    <i class="ti ${groupIcon}" style="color:var(--ta)"></i>
+                    <span>${groupName} screens</span>
+                    <div class="access-perms" style="margin-left:auto">
+                        <div class="perm-label">View</div>
+                        <div class="perm-label">Edit</div>
+                        <div class="perm-label">Approve</div>
+                        <div class="perm-label">Admin</div>
+                    </div>
+                </div>
+            `;
+
+            screens.forEach(s => {
+                const sId = s.screenId;
+                const chosenLvl = activeLevels[sId] || 'none';
+                const isOverridden = chosenLvl !== s.rolePermLevel;
+                const rowBg = isOverridden ? 'background:var(--bga)' : '';
+                const tagColor = isOverridden ? 'var(--ta)' : 'var(--tg)';
+                const tagText = isOverridden ? 'Overridden' : 'Inherited';
+
+                const currentRank = levelRanks[chosenLvl] || 0;
+
+                let checksHtml = permLevels.map((lvl, idx) => {
+                    const reqRank = idx + 1;
+                    const isOn = currentRank >= reqRank;
+                    const checkClass = isOn ? 'perm-check on' : 'perm-check';
+                    const clickAttr = canEdit ? `onclick="toggleUserPerm('${sId}', '${lvl}')"` : 'style="cursor:not-allowed;opacity:0.65" title="View-only mode: changes are disabled"';
+                    return `
+                        <div class="perm-cell">
+                            <div class="${checkClass}" ${clickAttr}></div>
+                        </div>
+                    `;
+                }).join('');
+
+                headerHtml += `
+                    <div class="access-row" style="${rowBg}">
+                        <i class="ti ${s.iconName || 'ti-file'} access-icon" style="${isOverridden ? 'color:var(--ta)' : ''}"></i>
+                        <span class="access-name" style="${isOverridden ? 'font-weight:500;color:var(--ta)' : ''}">${s.screenName}</span>
+                        <span style="font-size:10px;color:${tagColor};margin-right:8px;font-weight:${isOverridden ? '500' : '400'}">${tagText}</span>
+                        <div class="access-perms">
+                            ${checksHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            groupEl.innerHTML = headerHtml;
+            container.appendChild(groupEl);
+        }
+    }
+
+    function toggleUserPerm(screenId, targetLvl) {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot modify screen permissions.');
+            return;
+        }
+
+        const currentLvl = activeLevels[screenId] || 'none';
+        if (currentLvl === targetLvl) {
+            // Drop down one level
+            const levelStepDown = { 'view': 'none', 'edit': 'view', 'approve': 'edit', 'admin': 'approve' };
+            activeLevels[screenId] = levelStepDown[targetLvl] || 'none';
+        } else {
+            activeLevels[screenId] = targetLvl;
+        }
+        renderAccessTree();
+    }
+
+    async function saveAccessOverrides() {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot modify screen permissions.');
+            return;
+        }
+        if (!currentAccess) return;
+
+        const btn = document.getElementById('btn-save');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ti ti-loader animate-spin"></i> Saving...';
+        }
+
+        const overridesList = Object.entries(activeLevels).map(([screenId, lvl]) => ({
+            screenId: screenId,
+            permLevel: lvl
+        }));
+
+        const payload = {
+            userId: currentAccess.userId,
+            overrides: overridesList
+        };
+
+        try {
+            const resp = await fetch('?handler=SaveUserAccessJson', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const res = await resp.json();
+            if (resp.ok && res.success) {
+                alert('Screen access overrides saved successfully.');
+                await onUserSelectionChanged();
+            } else {
+                alert('Error: ' + (res.message || 'Failed to save access overrides.'));
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:11px"></i>Save access';
+        }
+    }
+
+    async function resetToRoleDefaults() {
+        if (!canEdit) {
+            alert('Access restricted: You have view-only access and cannot reset screen permissions.');
+            return;
+        }
+        if (!currentAccess) return;
+        if (!confirm(`Reset all screen access overrides for ${currentAccess.fullName}? The user will inherit base permissions from ${currentAccess.roleName}.`)) return;
+
+        const btn = document.getElementById('btn-reset');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ti ti-loader animate-spin"></i> Resetting...';
+        }
+
+        try {
+            const resp = await fetch('?handler=ResetUserAccessJson', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify({ userId: currentAccess.userId })
+            });
+
+            const res = await resp.json();
+            if (resp.ok && res.success) {
+                alert('Overrides cleared. User now inherits all role permissions.');
+                await onUserSelectionChanged();
+            } else {
+                alert('Error: ' + (res.message || 'Failed to reset overrides.'));
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-refresh" style="font-size:11px"></i>Reset to role';
+        }
+    }
+</script>
+}

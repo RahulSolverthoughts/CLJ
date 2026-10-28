@@ -1,0 +1,383 @@
+@page
+@model XMLAutoTagger.WebAPI.Pages.Roles.IndexModel
+@{
+    ViewData["Title"] = "Roles";
+    ViewData["ActivePage"] = "Roles";
+    ViewData["PageHeading"] = "Role management";
+    ViewData["PageSubtitle"] = $"{Model.Roles.Count} roles · {Model.BuiltInRolesCount} built-in · {Model.CustomRolesCount} custom";
+    Layout = "_Layout";
+}
+
+@Html.AntiForgeryToken()
+
+@section TopbarActions {
+    @if (Model.CanEdit)
+    {
+        <button class="btn btn-sm" onclick="switchToNewRole()"><i class="ti ti-plus" style="font-size:11px"></i><span>New role</span></button>
+    }
+    else
+    {
+        <span class="badge b-d" style="padding:4px 8px;font-size:11px;font-weight:600"><i class="ti ti-eye"></i> View only</span>
+    }
+}
+
+<div class="sidebar-layout">
+    <!-- LEFT: Role list -->
+    <div style="display:flex;flex-direction:column;gap:8px;position:relative">
+        <div id="role-list">
+            @foreach (var role in Model.Roles)
+            {
+                var iconClass = role.RoleCode switch
+                {
+                    "admin" => "ti-crown",
+                    "senior_editor" => "ti-star",
+                    "editor" => "ti-pencil",
+                    _ => "ti-user-check"
+                };
+                var iconBg = role.RoleCode switch
+                {
+                    "admin" => "background:var(--bgr);color:var(--tr)",
+                    "senior_editor" => "background:var(--bgpr);color:var(--tpr)",
+                    "editor" => "background:var(--bga);color:var(--ta)",
+                    _ => "background:var(--bgg);color:var(--tg)"
+                };
+
+                <div class="item-card" id="card-@role.RoleId" onclick="selectRole('@role.RoleId')" style="margin-bottom:8px">
+                    <div class="item-icon" style="@iconBg"><i class="ti @iconClass"></i></div>
+                    <div style="flex:1;min-width:0">
+                        <div class="item-name">@role.RoleName</div>
+                        <div class="item-meta">@(role.IsSystem ? "Built-in" : "Custom") · @role.UserCount @(role.UserCount == 1 ? "user" : "users")</div>
+                    </div>
+                    <span class="badge @(role.IsSystem ? "b-d" : "b-s")" style="font-size:10px">@(role.IsSystem ? "Built-in" : "Custom")</span>
+                </div>
+            }
+        </div>
+        @if (Model.CanEdit)
+        {
+            <button class="btn btn-sm btn-accent" style="width:100%;justify-content:center;margin-top:4px" onclick="switchToNewRole()">
+                <i class="ti ti-plus" style="font-size:11px"></i>New custom role
+            </button>
+        }
+    </div>
+
+    <!-- RIGHT: Role permission form -->
+    <div style="position:relative">
+        <div class="card">
+            <div class="card-hdr">
+                <div class="card-title">
+                    <i class="ti ti-shield" style="color:var(--ta)"></i><span id="role-title-text">Role details</span>
+                </div>
+                <div style="display:flex;gap:6px">
+                    @if (Model.CanEdit)
+                    {
+                        <button class="btn btn-xs btn-danger" id="btn-delete-role" onclick="deleteCurrentRole()"><i class="ti ti-trash" style="font-size:10px"></i>Delete</button>
+                        <button class="btn btn-xs btn-accent" id="btn-save-role" onclick="saveCurrentRole()"><i class="ti ti-device-floppy" style="font-size:10px"></i>Save role</button>
+                    }
+                    else
+                    {
+                        <span class="badge b-n" style="font-size:10.5px"><i class="ti ti-lock"></i> View only</span>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                <input type="hidden" id="role-id">
+
+                <div class="g2">
+                    <div class="form-row">
+                        <div class="form-label">Role name <span class="req">*</span></div>
+                        <input class="form-input" id="role-name" placeholder="e.g. QC reviewer">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-label">Base role (inherits from)</div>
+                        <select class="form-select" id="role-base">
+                            <option value="">None</option>
+                            @foreach (var baseRole in Model.Roles.Where(r => r.IsSystem))
+                            {
+                                <option value="@baseRole.RoleId">@baseRole.RoleName</option>
+                            }
+                        </select>
+                        <div class="form-hint">Inherits all base permissions; override below</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-label">Description</div>
+                    <input class="form-input" id="role-desc" placeholder="Describe what this role can do…">
+                </div>
+
+                <div class="form-section" style="margin-top:4px"><i class="ti ti-table" style="font-size:13px"></i>Permission matrix</div>
+                <div class="info-box">
+                    <i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                    <span>View = can see the screen. Edit = can make changes. Approve = can approve and route documents. Admin = full control including delete.</span>
+                </div>
+
+                <div style="overflow-x:auto">
+                    <table class="perm-matrix">
+                        <thead>
+                            <tr>
+                                <th>Screen / feature</th>
+                                <th>View</th>
+                                <th>Edit</th>
+                                <th>Approve</th>
+                                <th>Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-tbody">
+                            <!-- Populated dynamically based on screens and selected role -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Caches -->
+<script id="roles-json" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Roles, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+<script id="screens-json" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Screens, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+
+@section Scripts {
+<script>
+    const canEdit = @(Model.CanEdit.ToString().ToLower());
+    let rolesData = JSON.parse(document.getElementById('roles-json')?.textContent || '[]');
+    let screensData = JSON.parse(document.getElementById('screens-json')?.textContent || '[]');
+    let currentRoleId = null;
+    let currentRolePermissions = {}; // screenId -> permLevel ('none', 'view', 'edit', 'approve', 'admin')
+
+    const permLevels = ['view', 'edit', 'approve', 'admin'];
+
+    function getCsrfToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (rolesData.length > 0) {
+            selectRole(rolesData[0].roleId || rolesData[0].RoleId);
+        } else if (canEdit) {
+            switchToNewRole();
+        }
+    });
+
+    function selectRole(id) {
+        currentRoleId = id;
+        const role = rolesData.find(r => (r.roleId || r.RoleId) === id);
+        if (!role) return;
+
+        document.querySelectorAll('#role-list .item-card').forEach(c => c.classList.remove('selected'));
+        const activeCard = document.getElementById('card-' + id);
+        if (activeCard) activeCard.classList.add('selected');
+
+        const isSys = role.isSystem !== undefined ? role.isSystem : role.IsSystem;
+        document.getElementById('role-id').value = role.roleId || role.RoleId;
+        document.getElementById('role-title-text').textContent = (isSys ? 'Built-in role — ' : 'Custom role — ') + (role.roleName || role.RoleName);
+        document.getElementById('role-name').value = role.roleName || role.RoleName;
+        document.getElementById('role-name').disabled = isSys || !canEdit;
+        document.getElementById('role-desc').value = role.description || role.Description || '';
+        document.getElementById('role-desc').disabled = isSys || !canEdit;
+        document.getElementById('role-base').value = role.baseRoleId || role.BaseRoleId || '';
+        document.getElementById('role-base').disabled = isSys || !canEdit;
+
+        const delBtn = document.getElementById('btn-delete-role');
+        if (delBtn) delBtn.style.display = (isSys || !canEdit) ? 'none' : 'inline-flex';
+        const saveBtn = document.getElementById('btn-save-role');
+        if (saveBtn) saveBtn.style.display = (isSys || !canEdit) ? 'none' : 'inline-flex';
+
+        // Load permissions
+        currentRolePermissions = {};
+        const permissions = role.permissions || role.Permissions || [];
+        permissions.forEach(p => {
+            currentRolePermissions[p.screenId || p.ScreenId] = (p.permLevel || p.PermLevel || 'none').toLowerCase();
+        });
+
+        renderMatrix(!isSys && canEdit);
+    }
+
+    function renderMatrix(isEditable) {
+        const tbody = document.getElementById('matrix-tbody');
+        tbody.innerHTML = '';
+
+        // Group screens
+        const groups = {};
+        screensData.forEach(s => {
+            const grp = s.screenGroup || s.ScreenGroup || 'General';
+            if (!groups[grp]) groups[grp] = [];
+            groups[grp].push(s);
+        });
+
+        for (const [groupName, groupScreens] of Object.entries(groups)) {
+            // Group header row
+            const hdrRow = document.createElement('tr');
+            hdrRow.className = 'group-hdr';
+            hdrRow.innerHTML = `<td colspan="5">${groupName}</td>`;
+            tbody.appendChild(hdrRow);
+
+            groupScreens.forEach(s => {
+                const sId = s.screenId || s.ScreenId;
+                const sName = s.screenName || s.ScreenName;
+                const currentLvl = currentRolePermissions[sId] || 'none';
+
+                const tr = document.createElement('tr');
+                let rowHtml = `<td>${sName}</td>`;
+
+                const levelRanks = { 'none': 0, 'view': 1, 'edit': 2, 'approve': 3, 'admin': 4 };
+                const currentRank = levelRanks[currentLvl] || 0;
+
+                permLevels.forEach((lvl, idx) => {
+                    const requiredRank = idx + 1;
+                    const isOn = currentRank >= requiredRank;
+                    const disabledClass = isEditable ? '' : 'disabled';
+                    const checkClass = isOn ? 'perm-check on' : 'perm-check';
+
+                    rowHtml += `
+                        <td>
+                            <div class="${checkClass} ${disabledClass}" 
+                                 onclick="${isEditable ? `toggleScreenPerm('${sId}', '${lvl}')` : ''}">
+                            </div>
+                        </td>
+                    `;
+                });
+
+                tr.innerHTML = rowHtml;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    function toggleScreenPerm(screenId, targetLvl) {
+        if (!canEdit) return;
+        const currentLvl = currentRolePermissions[screenId] || 'none';
+        if (currentLvl === targetLvl) {
+            // Drop down one level
+            const levelRanks = { 'view': 'none', 'edit': 'view', 'approve': 'edit', 'admin': 'approve' };
+            currentRolePermissions[screenId] = levelRanks[targetLvl] || 'none';
+        } else {
+            currentRolePermissions[screenId] = targetLvl;
+        }
+        renderMatrix(canEdit);
+    }
+
+    function switchToNewRole() {
+        if (!canEdit) return;
+        currentRoleId = null;
+        document.querySelectorAll('#role-list .item-card').forEach(c => c.classList.remove('selected'));
+
+        document.getElementById('role-id').value = '';
+        document.getElementById('role-title-text').textContent = 'New custom role';
+        document.getElementById('role-name').value = '';
+        document.getElementById('role-name').disabled = false;
+        document.getElementById('role-desc').value = '';
+        document.getElementById('role-desc').disabled = false;
+        document.getElementById('role-base').value = '';
+        document.getElementById('role-base').disabled = false;
+
+        document.getElementById('btn-delete-role').style.display = 'none';
+        document.getElementById('btn-save-role').style.display = 'inline-flex';
+
+        currentRolePermissions = {};
+        renderMatrix(true);
+    }
+
+    async function saveCurrentRole() {
+        if (!canEdit) {
+            alert('Access denied: You have view-only permission.');
+            return;
+        }
+        const id = document.getElementById('role-id').value;
+        const name = document.getElementById('role-name').value.trim();
+        const desc = document.getElementById('role-desc').value.trim();
+        const baseRole = document.getElementById('role-base').value || null;
+
+        if (!name) {
+            alert('Role name is required.');
+            return;
+        }
+
+        const permsList = Object.entries(currentRolePermissions).map(([sId, lvl]) => ({
+            screenId: sId,
+            permLevel: lvl
+        })).filter(p => p.permLevel !== 'none');
+
+        const isNew = !id;
+        const url = isNew ? '?handler=CreateRoleJson' : '?handler=UpdateRoleJson';
+        const payload = isNew ? {
+            roleName: name,
+            description: desc,
+            baseRoleId: baseRole,
+            permissions: permsList
+        } : {
+            roleId: id,
+            roleName: name,
+            description: desc,
+            baseRoleId: baseRole,
+            permissions: permsList
+        };
+
+        const btn = document.getElementById('btn-save-role');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ti ti-loader animate-spin"></i> Saving...';
+        }
+
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const res = await resp.json();
+            if (resp.ok && (res.success || res.roleId)) {
+                window.location.reload();
+            } else {
+                alert('Error: ' + (res.message || 'Failed to save role.'));
+            }
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:10px"></i>Save role';
+            }
+        }
+    }
+
+    async function deleteCurrentRole() {
+        if (!canEdit) {
+            alert('Access denied: You have view-only permission.');
+            return;
+        }
+        const id = document.getElementById('role-id').value;
+        const name = document.getElementById('role-name').value;
+        if (!id) return;
+
+        if (!confirm(`Are you sure you want to delete role "${name}"?`)) return;
+
+        try {
+            const resp = await fetch('?handler=DeleteRoleJson', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify({ roleId: id })
+            });
+
+            const res = await resp.json();
+            if (resp.ok && res.success) {
+                window.location.reload();
+            } else {
+                alert('Error: ' + (res.message || 'Cannot delete role assigned to users.'));
+            }
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
+    }
+</script>
+}

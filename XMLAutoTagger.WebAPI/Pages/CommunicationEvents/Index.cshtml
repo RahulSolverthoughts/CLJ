@@ -1,0 +1,966 @@
+@page
+@model XMLAutoTagger.WebAPI.Pages.CommunicationEvents.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+@section Styles {
+<style>
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    background: var(--sf);
+    border: 0.5px solid var(--bd);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.stat-val {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--tp);
+}
+.stat-lbl {
+    font-size: 11px;
+    color: var(--tm);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 500;
+}
+
+/* FILTER BAR */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    background: var(--sf);
+    padding: 10px 14px;
+    border: 0.5px solid var(--bd);
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+.search-box input {
+    width: 100%;
+    padding: 6px 10px 6px 30px;
+    font-size: 12px;
+    border: 0.5px solid var(--bd);
+    border-radius: var(--r);
+    background: var(--s2);
+    font-family: var(--font);
+    color: var(--tp);
+    outline: none;
+}
+.search-box input:focus {
+    border-color: var(--ta);
+    background: #fff;
+}
+.search-box i {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--tm);
+    font-size: 14px;
+}
+
+.filter-select {
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 0.5px solid var(--bd);
+    border-radius: var(--r);
+    background: var(--sf);
+    color: var(--tp);
+    font-family: var(--font);
+    outline: none;
+}
+.filter-select:focus {
+    border-color: var(--ta);
+}
+
+/* TABLE STYLING */
+.events-tbl th {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--tm);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    background: var(--s2);
+    border-bottom: 0.5px solid var(--bd);
+    text-align: left;
+}
+.events-tbl td {
+    padding: 12px 14px;
+    border-bottom: 0.5px solid var(--bd);
+    vertical-align: middle;
+    font-size: 12px;
+}
+.events-tbl tr:hover td {
+    background: #faf9f7;
+}
+
+.code-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #f1f0eb;
+    color: #4a4944;
+    border: 0.5px solid #dedcd6;
+    display: inline-block;
+}
+
+.token-chip {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bga);
+    color: var(--ta);
+    border: 0.5px solid var(--bda);
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.token-chip:hover {
+    background: #d4e6f9;
+    border-color: var(--ta);
+    transform: translateY(-1px);
+}
+
+/* MODAL TABS */
+.modal-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--bd);
+    margin-bottom: 12px;
+}
+.modal-tab {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ts);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+}
+.modal-tab.active {
+    color: var(--ta);
+    border-bottom-color: var(--ta);
+    font-weight: 600;
+}
+.preview-pane {
+    border: 1px solid var(--bd);
+    border-radius: 6px;
+    background: #ffffff;
+    min-height: 160px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 14px;
+}
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,26,24,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    overflow-y: auto;
+}
+.modal-box {
+    background: var(--sf);
+    border-radius: 8px;
+    border: 0.5px solid var(--bd);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+    width: 100%;
+    max-height: calc(100vh - 36px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: auto;
+}
+.modal-box .card-hdr {
+    flex-shrink: 0;
+}
+.modal-box .card-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+.modal-box form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+</style>
+}
+
+<div class="main">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div style="font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-bell-ringing" style="color:var(--ta);font-size:18px"></i>
+        <span>Communication Events & Templates</span>
+      </div>
+      <div style="font-size:11px;color:var(--tm)">Centralized event triggers, dynamic database templates, and notification dispatches</div>
+    </div>
+    <div class="tb-right">
+      <button class="btn btn-primary" onclick="openAddEventModal()">
+        <i class="ti ti-plus"></i> Add Event
+      </button>
+      <a href="/Settings/Communication" class="btn" title="View Channel Settings">
+        <i class="ti ti-settings"></i> Channel Settings
+      </a>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- METRICS -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--bga);color:var(--ta)">
+          <i class="ti ti-sparkles"></i>
+        </div>
+        <div>
+          <div class="stat-val" id="metric-total">@Model.TotalEvents</div>
+          <div class="stat-lbl">Total Events</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--bgg);color:var(--tg)">
+          <i class="ti ti-circle-check"></i>
+        </div>
+        <div>
+          <div class="stat-val" id="metric-active">@Model.ActiveEvents</div>
+          <div class="stat-lbl">Active Triggers</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--bgpr);color:var(--tpr)">
+          <i class="ti ti-mail"></i>
+        </div>
+        <div>
+          <div class="stat-val" id="metric-email">@Model.EmailEvents</div>
+          <div class="stat-lbl">Email Templates</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--bgw);color:var(--tw)">
+          <i class="ti ti-clock-hour-4"></i>
+        </div>
+        <div>
+          <div class="stat-val" style="font-size:14px;font-weight:600">
+            @(Model.LastUpdated.HasValue ? Model.LastUpdated.Value.ToString("dd MMM, HH:mm") : "N/A")
+          </div>
+          <div class="stat-lbl">Last Template Update</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <div class="search-box">
+        <i class="ti ti-search"></i>
+        <input type="text" id="event-search" placeholder="Search by event code, name, or subject..." oninput="filterEventsTable()" />
+      </div>
+
+      <select id="filter-channel" class="filter-select" onchange="filterEventsTable()">
+        <option value="all">All Channels</option>
+        <option value="email">Email</option>
+        <option value="sms">SMS</option>
+        <option value="whatsapp">WhatsApp</option>
+      </select>
+
+      <select id="filter-status" class="filter-select" onchange="filterEventsTable()">
+        <option value="all">All Statuses</option>
+        <option value="active">Active Only</option>
+        <option value="inactive">Inactive Only</option>
+      </select>
+
+      <button class="btn btn-sm" onclick="resetFilters()" style="margin-left:auto">
+        <i class="ti ti-rotate"></i> Reset
+      </button>
+    </div>
+
+    <!-- EVENTS TABLE CARD -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">
+          <i class="ti ti-list"></i>
+          <span>Configured Communication Events</span>
+          <span class="badge b-n" id="event-count-badge" style="margin-left:6px">@Model.Events.Count events</span>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="tbl events-tbl" id="events-table">
+          <thead>
+            <tr>
+              <th style="width:70px">ID</th>
+              <th style="min-width:240px">Event Code & Name</th>
+              <th style="width:110px">Channel</th>
+              <th style="min-width:260px">Email Subject Template</th>
+              <th style="width:100px;text-align:center">Active</th>
+              <th style="width:140px">Updated</th>
+              <th style="width:150px;text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="events-tbody">
+            @if (Model.Events != null && Model.Events.Any())
+            {
+              @foreach (var evt in Model.Events)
+              {
+                <tr class="event-row" 
+                    data-id="@evt.EventId"
+                    data-code="@evt.EventCode.ToLowerInvariant()"
+                    data-name="@evt.EventName.ToLowerInvariant()"
+                    data-subject="@evt.EmailSubject.ToLowerInvariant()"
+                    data-channel="@evt.Channel.ToLowerInvariant()"
+                    data-status="@(evt.IsActive ? "active" : "inactive")">
+                  <td>
+                    <span class="badge b-p" style="font-weight:700">#@evt.EventId</span>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                      <span class="code-tag">@evt.EventCode</span>
+                      <strong style="font-size:12.5px;color:var(--tp)">@evt.EventName</strong>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(evt.Description))
+                    {
+                      <div style="font-size:11px;color:var(--tm);line-height:1.3">@evt.Description</div>
+                    }
+                  </td>
+                  <td>
+                    @if (evt.Channel.Equals("Email", StringComparison.OrdinalIgnoreCase))
+                    {
+                      <span class="badge b-a"><i class="ti ti-mail"></i> Email</span>
+                    }
+                    else if (evt.Channel.Equals("SMS", StringComparison.OrdinalIgnoreCase))
+                    {
+                      <span class="badge b-p"><i class="ti ti-message"></i> SMS</span>
+                    }
+                    else
+                    {
+                      <span class="badge b-s"><i class="ti ti-brand-whatsapp"></i> WhatsApp</span>
+                    }
+                  </td>
+                  <td>
+                    <div style="font-size:12px;color:var(--tp);font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                      @evt.EmailSubject
+                    </div>
+                  </td>
+                  <td style="text-align:center">
+                    <div class="toggle @(evt.IsActive ? "on" : "off")" 
+                         onclick="toggleEventStatus(@evt.EventId, this)" 
+                         title="Click to toggle trigger active state">
+                      <div class="toggle-knob"></div>
+                    </div>
+                  </td>
+                  <td style="font-size:11px;color:var(--tm)">
+                    @evt.UpdatedAt.ToString("dd MMM yyyy, HH:mm")
+                  </td>
+                  <td style="text-align:right;white-space:nowrap">
+                    <button class="btn btn-xs" onclick="previewEvent(@evt.EventId)" title="View Template">
+                      <i class="ti ti-eye"></i> View
+                    </button>
+                    <button class="btn btn-xs btn-primary" onclick="editEvent(@evt.EventId)" title="Edit Event & Template">
+                      <i class="ti ti-edit"></i> Edit
+                    </button>
+                  </td>
+                </tr>
+              }
+            }
+            else
+            {
+              <tr id="no-events-row">
+                <td colspan="7" style="text-align:center;padding:36px;color:var(--tm)">
+                  <i class="ti ti-bell-off" style="font-size:28px;display:block;margin-bottom:8px"></i>
+                  No communication events configured yet. Click <strong>+ Add Event</strong> to create your first event trigger.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ADD / EDIT COMMUNICATION EVENT      -->
+<!-- ========================================== -->
+<div class="modal-overlay" id="event-modal" style="display:none">
+  <div class="modal-box" style="max-width:760px;max-height:calc(100vh - 40px)">
+    <div class="card-hdr" style="padding:14px 18px">
+      <div class="card-title" style="font-size:13px">
+        <i class="ti ti-sparkles" style="color:var(--ta)"></i>
+        <span id="event-modal-title">Create Communication Event</span>
+      </div>
+      <button class="icon-btn" onclick="closeEventModal()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <form id="event-form" onsubmit="saveEvent(event)" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+      <input type="hidden" id="form-is-edit" value="false" />
+
+      <div class="card-body" style="padding:16px 18px;overflow-y:auto;flex:1;min-height:0">
+
+        <!-- ROW 1: ID, Code, Channel -->
+        <div style="display:grid;grid-template-columns:140px 1fr 140px;gap:12px;margin-bottom:12px">
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+              Event ID (Enum) *
+            </label>
+            <input type="number" id="form-event-id" required min="1" placeholder="e.g. 4" 
+                   style="width:100%;padding:7px 10px;font-size:12px;border:0.5px solid var(--bd);border-radius:var(--r);background:var(--s2)" />
+            <span style="font-size:10px;color:var(--tm)">C# Enum ID</span>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+              Event Code (Unique) *
+            </label>
+            <input type="text" id="form-event-code" required maxlength="200" placeholder="e.g. DOCUMENT_TAGGED" 
+                   style="width:100%;padding:7px 10px;font-size:12px;border:0.5px solid var(--bd);border-radius:var(--r);font-family:ui-monospace,monospace" />
+            <span style="font-size:10px;color:var(--tm)">Max 200 characters</span>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+              Channel *
+            </label>
+            <select id="form-channel" style="width:100%;padding:7px 10px;font-size:12px;border:0.5px solid var(--bd);border-radius:var(--r);background:#fff">
+              <option value="Email">Email</option>
+              <option value="SMS">SMS</option>
+              <option value="WhatsApp">WhatsApp</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ROW 2: Event Name & Active Status -->
+        <div style="display:grid;grid-template-columns:1fr 140px;gap:12px;margin-bottom:12px">
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+              Event Name *
+            </label>
+            <input type="text" id="form-event-name" required maxlength="200" placeholder="e.g. Document Successfully Processed" 
+                   style="width:100%;padding:7px 10px;font-size:12px;border:0.5px solid var(--bd);border-radius:var(--r)" />
+          </div>
+
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+              Active Trigger
+            </label>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:4px">
+              <div class="toggle on" id="form-active-toggle" onclick="toggleFormActive()">
+                <div class="toggle-knob"></div>
+              </div>
+              <span id="form-active-label" style="font-size:12px;font-weight:500;color:var(--tg)">Active</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROW 3: Description -->
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+            Description
+          </label>
+          <input type="text" id="form-description" placeholder="Brief explanation of when this event is automatically triggered..." 
+                 style="width:100%;padding:7px 10px;font-size:12px;border:0.5px solid var(--bd);border-radius:var(--r)" />
+        </div>
+
+        <!-- ROW 4: Subject Template -->
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:4px">
+            Email Subject Template *
+          </label>
+          <input type="text" id="form-subject" required maxlength="500" placeholder="e.g. LegalXML Alert: Document {{DocumentTitle}} is Ready" 
+                 style="width:100%;padding:7px 10px;font-size:12px;border:0.5px solid var(--bd);border-radius:var(--r);font-weight:500" />
+        </div>
+
+        <!-- TOKEN CHIPS HELPER -->
+        <div style="background:var(--s2);border:0.5px solid var(--bd);border-radius:6px;padding:8px 12px;margin-bottom:14px">
+          <div style="font-size:10.5px;font-weight:600;color:var(--tm);text-transform:uppercase;margin-bottom:6px">
+            <i class="ti ti-tags"></i> Click tokens to insert into body:
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="token-chip" onclick="insertToken('{{FullName}}')"><i class="ti ti-plus"></i> {{FullName}}</span>
+            <span class="token-chip" onclick="insertToken('{{Email}}')"><i class="ti ti-plus"></i> {{Email}}</span>
+            <span class="token-chip" onclick="insertToken('{{TemporaryPassword}}')"><i class="ti ti-plus"></i> {{TemporaryPassword}}</span>
+            <span class="token-chip" onclick="insertToken('{{LoginUrl}}')"><i class="ti ti-plus"></i> {{LoginUrl}}</span>
+            <span class="token-chip" onclick="insertToken('{{MustChangeNotice}}')"><i class="ti ti-plus"></i> {{MustChangeNotice}}</span>
+            <span class="token-chip" onclick="insertToken('{{ChangedAt}}')"><i class="ti ti-plus"></i> {{ChangedAt}}</span>
+            <span class="token-chip" onclick="insertToken('{{DocumentTitle}}')"><i class="ti ti-plus"></i> {{DocumentTitle}}</span>
+          </div>
+        </div>
+
+        <!-- BODY EDITOR & LIVE PREVIEW TABS -->
+        <div>
+          <div class="modal-tabs">
+            <div class="modal-tab active" id="tab-editor-btn" onclick="switchModalTab('editor')">
+              <i class="ti ti-code"></i> HTML Template Source
+            </div>
+            <div class="modal-tab" id="tab-preview-btn" onclick="switchModalTab('preview')">
+              <i class="ti ti-eye"></i> Live HTML Preview
+            </div>
+          </div>
+
+          <div id="tab-editor-content">
+            <textarea id="form-email-body" rows="12" required 
+                      placeholder="Write responsive HTML email body with {{Tokens}}..." 
+                      style="width:100%;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.45;border:0.5px solid var(--bd);border-radius:var(--r);background:#ffffff"></textarea>
+          </div>
+
+          <div id="tab-preview-content" style="display:none">
+            <div class="preview-pane" id="modal-live-preview">
+              <!-- Rendered preview appears here -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card-hdr" style="padding:12px 18px;background:var(--s2);display:flex;justify-content:flex-end;gap:8px">
+        <button type="button" class="btn" onclick="closeEventModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-event">
+          <i class="ti ti-device-floppy"></i> Save Event
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: EVENT VIEW & TEMPLATE PREVIEW       -->
+<!-- ========================================== -->
+<div class="modal-overlay" id="preview-modal" style="display:none">
+  <div class="modal-box" style="max-width:720px;max-height:calc(100vh - 40px)">
+    <div class="card-hdr" style="padding:14px 18px">
+      <div class="card-title" style="font-size:13px">
+        <i class="ti ti-eye" style="color:var(--ta)"></i>
+        <span id="preview-modal-title">Communication Event Details</span>
+      </div>
+      <button class="icon-btn" onclick="closePreviewModal()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="card-body" style="padding:16px 18px;overflow-y:auto;flex:1;min-height:0">
+      <!-- Event Meta Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:12px;border-bottom:0.5px solid var(--bd)">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge b-p" id="preview-event-id" style="font-weight:700">#1</span>
+            <span class="code-tag" id="preview-event-code">CODE</span>
+            <strong id="preview-event-name" style="font-size:13px;color:var(--tp)">Event Name</strong>
+          </div>
+          <div id="preview-event-desc" style="font-size:11.5px;color:var(--tm);margin-top:4px">Description</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge b-a" id="preview-event-channel">Email</span>
+          <span class="badge b-s" id="preview-event-status">Active</span>
+        </div>
+      </div>
+
+      <!-- Subject Preview -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--tm);text-transform:uppercase;font-weight:600">Subject Preview</div>
+        <div id="preview-modal-subject" style="font-size:13px;font-weight:600;color:var(--tp);margin-top:2px;background:var(--s2);padding:8px 12px;border-radius:6px;border:0.5px solid var(--bd)">-</div>
+      </div>
+
+      <!-- Body Preview -->
+      <div style="font-size:11px;color:var(--tm);text-transform:uppercase;font-weight:600;margin-bottom:6px">HTML Body Preview</div>
+      <div id="preview-modal-body" class="preview-pane" style="max-height:260px;min-height:160px;overflow-y:auto">
+        <!-- Rendered HTML -->
+      </div>
+    </div>
+
+    <div class="card-hdr" style="padding:12px 18px;background:var(--s2);display:flex;justify-content:flex-end;gap:8px">
+      <button type="button" class="btn" onclick="closePreviewModal()">Close</button>
+      <button type="button" class="btn btn-primary" id="btn-preview-to-edit" onclick="editFromPreview()">
+        <i class="ti ti-edit"></i> Edit Event
+      </button>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+let cachedEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Events, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+let formIsActive = true;
+let currentPreviewId = null;
+
+// Safe helper to find event regardless of casing
+function findEvent(id) {
+  const numId = parseInt(id, 10);
+  return cachedEvents.find(e => ((e.eventId ?? e.EventId) === numId));
+}
+
+// FILTERING
+function filterEventsTable() {
+  const search = (document.getElementById('event-search').value || '').toLowerCase().trim();
+  const channel = document.getElementById('filter-channel').value;
+  const status = document.getElementById('filter-status').value;
+
+  const rows = document.querySelectorAll('.event-row');
+  let visibleCount = 0;
+
+  rows.forEach(row => {
+    const rowCode = row.getAttribute('data-code') || '';
+    const rowName = row.getAttribute('data-name') || '';
+    const rowSubj = row.getAttribute('data-subject') || '';
+    const rowChannel = row.getAttribute('data-channel') || '';
+    const rowStatus = row.getAttribute('data-status') || '';
+
+    const matchesSearch = !search || rowCode.includes(search) || rowName.includes(search) || rowSubj.includes(search);
+    const matchesChannel = (channel === 'all') || (rowChannel === channel);
+    const matchesStatus = (status === 'all') || (rowStatus === status);
+
+    if (matchesSearch && matchesChannel && matchesStatus) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  const badge = document.getElementById('event-count-badge');
+  if (badge) badge.innerText = `${visibleCount} events`;
+}
+
+function resetFilters() {
+  document.getElementById('event-search').value = '';
+  document.getElementById('filter-channel').value = 'all';
+  document.getElementById('filter-status').value = 'all';
+  filterEventsTable();
+}
+
+// STATUS TOGGLE
+async function toggleEventStatus(eventId, toggleEl) {
+  try {
+    const resp = await fetch(`/api/v1/communication-events/${eventId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await resp.json();
+    if (resp.ok && data.success) {
+      if (data.isActive) {
+        toggleEl.classList.remove('off');
+        toggleEl.classList.add('on');
+      } else {
+        toggleEl.classList.remove('on');
+        toggleEl.classList.add('off');
+      }
+      const row = document.querySelector(`.event-row[data-id="${eventId}"]`);
+      if (row) row.setAttribute('data-status', data.isActive ? 'active' : 'inactive');
+      const item = findEvent(eventId);
+      if (item) {
+        item.isActive = data.isActive;
+        item.IsActive = data.isActive;
+      }
+      updateMetrics();
+    } else {
+      alert('Error updating status: ' + (data.message || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Failed to communicate with server: ' + err.message);
+  }
+}
+
+function updateMetrics() {
+  const activeCount = cachedEvents.filter(e => (e.isActive ?? e.IsActive)).length;
+  const activeEl = document.getElementById('metric-active');
+  if (activeEl) activeEl.innerText = activeCount;
+}
+
+// FORM ACTIVE TOGGLE
+function toggleFormActive() {
+  formIsActive = !formIsActive;
+  const toggle = document.getElementById('form-active-toggle');
+  const label = document.getElementById('form-active-label');
+  if (formIsActive) {
+    toggle.classList.remove('off');
+    toggle.classList.add('on');
+    label.innerText = 'Active';
+    label.style.color = 'var(--tg)';
+  } else {
+    toggle.classList.remove('on');
+    toggle.classList.add('off');
+    label.innerText = 'Inactive';
+    label.style.color = 'var(--tm)';
+  }
+}
+
+// MODAL CONTROLS: ADD / EDIT
+function openAddEventModal() {
+  document.getElementById('event-modal-title').innerText = 'Create Communication Event';
+  document.getElementById('form-is-edit').value = 'false';
+  
+  const maxId = cachedEvents.length > 0 ? Math.max(...cachedEvents.map(e => (e.eventId ?? e.EventId))) : 0;
+  document.getElementById('form-event-id').value = maxId + 1;
+  document.getElementById('form-event-id').removeAttribute('readonly');
+  document.getElementById('form-event-code').value = '';
+  document.getElementById('form-event-code').removeAttribute('readonly');
+  document.getElementById('form-event-name').value = '';
+  document.getElementById('form-description').value = '';
+  document.getElementById('form-channel').value = 'Email';
+  document.getElementById('form-subject').value = '';
+  document.getElementById('form-email-body').value = getDefaultTemplate();
+
+  formIsActive = true;
+  const toggle = document.getElementById('form-active-toggle');
+  const label = document.getElementById('form-active-label');
+  toggle.className = 'toggle on';
+  label.innerText = 'Active';
+  label.style.color = 'var(--tg)';
+
+  switchModalTab('editor');
+  document.getElementById('event-modal').style.display = 'flex';
+}
+
+function editEvent(eventId) {
+  const item = findEvent(eventId);
+  if (!item) {
+    console.error('Event not found for ID:', eventId);
+    alert('Unable to load event details. Please refresh the page.');
+    return;
+  }
+
+  const id = item.eventId ?? item.EventId;
+  const code = item.eventCode ?? item.EventCode;
+  const name = item.eventName ?? item.EventName;
+  const desc = item.description ?? item.Description ?? '';
+  const channel = item.channel ?? item.Channel ?? 'Email';
+  const subject = item.emailSubject ?? item.EmailSubject ?? '';
+  const body = item.emailBody ?? item.EmailBody ?? '';
+  const active = item.isActive ?? item.IsActive ?? true;
+
+  document.getElementById('event-modal-title').innerText = `Edit Event #${id}: ${name}`;
+  document.getElementById('form-is-edit').value = 'true';
+  
+  document.getElementById('form-event-id').value = id;
+  document.getElementById('form-event-id').setAttribute('readonly', 'true');
+  document.getElementById('form-event-code').value = code;
+  document.getElementById('form-event-code').setAttribute('readonly', 'true');
+  document.getElementById('form-event-name').value = name;
+  document.getElementById('form-description').value = desc;
+  document.getElementById('form-channel').value = channel;
+  document.getElementById('form-subject').value = subject;
+  document.getElementById('form-email-body').value = body;
+
+  formIsActive = !!active;
+  const toggle = document.getElementById('form-active-toggle');
+  const label = document.getElementById('form-active-label');
+  if (formIsActive) {
+    toggle.className = 'toggle on';
+    label.innerText = 'Active';
+    label.style.color = 'var(--tg)';
+  } else {
+    toggle.className = 'toggle off';
+    label.innerText = 'Inactive';
+    label.style.color = 'var(--tm)';
+  }
+
+  switchModalTab('editor');
+  document.getElementById('event-modal').style.display = 'flex';
+}
+
+function closeEventModal() {
+  document.getElementById('event-modal').style.display = 'none';
+}
+
+function switchModalTab(tab) {
+  const editorBtn = document.getElementById('tab-editor-btn');
+  const previewBtn = document.getElementById('tab-preview-btn');
+  const editorContent = document.getElementById('tab-editor-content');
+  const previewContent = document.getElementById('tab-preview-content');
+
+  if (tab === 'preview') {
+    editorBtn.classList.remove('active');
+    previewBtn.classList.add('active');
+    editorContent.style.display = 'none';
+    previewContent.style.display = 'block';
+
+    const rawHtml = document.getElementById('form-email-body').value;
+    const previewBox = document.getElementById('modal-live-preview');
+    previewBox.innerHTML = renderDummyTokens(rawHtml);
+  } else {
+    previewBtn.classList.remove('active');
+    editorBtn.classList.add('active');
+    previewContent.style.display = 'none';
+    editorContent.style.display = 'block';
+  }
+}
+
+function insertToken(token) {
+  const textarea = document.getElementById('form-email-body');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  textarea.value = text.substring(0, start) + token + text.substring(end);
+  textarea.focus();
+  textarea.selectionStart = textarea.selectionEnd = start + token.length;
+}
+
+// SAVE EVENT (ADD / EDIT)
+async function saveEvent(e) {
+  e.preventDefault();
+  const isEdit = document.getElementById('form-is-edit').value === 'true';
+  const eventId = parseInt(document.getElementById('form-event-id').value);
+  const code = document.getElementById('form-event-code').value.trim();
+  const name = document.getElementById('form-event-name').value.trim();
+  const desc = document.getElementById('form-description').value.trim();
+  const channel = document.getElementById('form-channel').value;
+  const subject = document.getElementById('form-subject').value.trim();
+  const body = document.getElementById('form-email-body').value.trim();
+
+  const payload = {
+    eventId: eventId,
+    eventCode: code,
+    eventName: name,
+    description: desc,
+    channel: channel,
+    emailSubject: subject,
+    emailBody: body,
+    isActive: formIsActive
+  };
+
+  const btn = document.getElementById('btn-save-event');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Saving...';
+
+  try {
+    const url = isEdit ? `/api/v1/communication-events/${eventId}` : '/api/v1/communication-events';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const resp = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const res = await resp.json();
+    if (resp.ok) {
+      alert(isEdit ? 'Event updated successfully!' : 'Event created successfully!');
+      location.reload();
+    } else {
+      alert('Error: ' + (res.message || JSON.stringify(res)));
+    }
+  } catch (err) {
+    alert('Failed to save event: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-device-floppy"></i> Save Event';
+  }
+}
+
+// VIEW / PREVIEW MODAL
+function previewEvent(eventId) {
+  const item = findEvent(eventId);
+  if (!item) {
+    console.error('Event not found for ID:', eventId);
+    alert('Unable to load event details. Please refresh the page.');
+    return;
+  }
+
+  currentPreviewId = item.eventId ?? item.EventId;
+  const code = item.eventCode ?? item.EventCode;
+  const name = item.eventName ?? item.EventName;
+  const desc = item.description ?? item.Description ?? 'No description provided.';
+  const channel = item.channel ?? item.Channel ?? 'Email';
+  const active = item.isActive ?? item.IsActive ?? true;
+  const subject = item.emailSubject ?? item.EmailSubject ?? '';
+  const body = item.emailBody ?? item.EmailBody ?? '';
+
+  document.getElementById('preview-modal-title').innerText = `Event #${currentPreviewId}: ${name}`;
+  document.getElementById('preview-event-id').innerText = `#${currentPreviewId}`;
+  document.getElementById('preview-event-code').innerText = code;
+  document.getElementById('preview-event-name').innerText = name;
+  document.getElementById('preview-event-desc').innerText = desc;
+  document.getElementById('preview-event-channel').innerText = channel;
+  document.getElementById('preview-event-status').innerText = active ? 'Active' : 'Inactive';
+  document.getElementById('preview-event-status').className = active ? 'badge b-s' : 'badge b-d';
+
+  document.getElementById('preview-modal-subject').innerText = renderDummyTokens(subject);
+  document.getElementById('preview-modal-body').innerHTML = renderDummyTokens(body);
+  document.getElementById('preview-modal').style.display = 'flex';
+}
+
+function closePreviewModal() {
+  document.getElementById('preview-modal').style.display = 'none';
+}
+
+function editFromPreview() {
+  if (currentPreviewId) {
+    closePreviewModal();
+    editEvent(currentPreviewId);
+  }
+}
+
+// TOKEN REPLACEMENT HELPER FOR PREVIEW
+function renderDummyTokens(html) {
+  if (!html) return '';
+  return html
+    .replace(/{{FullName}}/gi, 'Alexander Wright')
+    .replace(/{{Email}}/gi, 'alexander.wright@legalxml.my')
+    .replace(/{{TemporaryPassword}}/gi, 'SecurePass987!')
+    .replace(/{{LoginUrl}}/gi, 'http://localhost:5079/login')
+    .replace(/{{MustChangeNotice}}/gi, 'You must change this temporary password upon your first sign-in.')
+    .replace(/{{ChangedAt}}/gi, new Date().toUTCString())
+    .replace(/{{DocumentTitle}}/gi, 'Federal Court Judgment #FC-2026-09');
+}
+
+function getDefaultTemplate() {
+  return `<div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+  <div style="background:#1e293b;padding:24px 32px;border-bottom:3px solid #3b82f6;">
+    <h1 style="color:#ffffff;margin:0;font-size:20px;font-weight:600;letter-spacing:0.5px;">LegalXML System Alert</h1>
+    <p style="color:#94a3b8;margin:6px 0 0 0;font-size:13px;">Automated Notification Trigger</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="font-size:15px;color:#334155;margin:0 0 16px 0;">Hello <strong>{{FullName}}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;margin:0 0 24px 0;">
+      This is an automated notification regarding your account and documents in LegalXML.
+    </p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="{{LoginUrl}}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:600;display:inline-block;">Access LegalXML</a>
+    </div>
+  </div>
+  <div style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;text-align:center;">
+    <p style="color:#64748b;font-size:12px;margin:0;">&copy; 2026 LegalXML Publishing System. All rights reserved.</p>
+  </div>
+</div>`;
+}
+</script>
+}

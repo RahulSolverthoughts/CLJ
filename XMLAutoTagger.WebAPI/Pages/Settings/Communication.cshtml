@@ -1,0 +1,683 @@
+@page
+@model XMLAutoTagger.WebAPI.Pages.Settings.CommunicationModel
+@{
+    ViewData["Title"] = "Settings — Communication Channels";
+    ViewData["ActivePage"] = "Communication";
+    ViewData["PageHeading"] = "Communication settings";
+    ViewData["PageSubtitle"] = "Configure and test unified Email, SMS, and WhatsApp dispatch providers";
+    Layout = "_Layout";
+
+    var email = Model.EmailSetting;
+    var sms = Model.SmsSetting;
+    var wa = Model.WhatsAppSetting;
+}
+
+@Html.AntiForgeryToken()
+
+<!-- Settings Sub-tabs -->
+<div style="display:flex;gap:4px;border-bottom:0.5px solid var(--bd);margin:-18px -20px 18px;padding:0 20px;background:var(--sf)">
+    <a href="/Settings" class="tab" style="text-decoration:none"><i class="ti ti-user" style="font-size:13px"></i>User profile</a>
+    <a href="/Settings/ChangePassword" class="tab" style="text-decoration:none"><i class="ti ti-key" style="font-size:13px"></i>Change password</a>
+    <a href="/Settings/Communication" class="tab active" style="text-decoration:none"><i class="ti ti-mail-fast" style="font-size:13px"></i>Communication channels</a>
+</div>
+
+<!-- Channel Switcher Tabs -->
+<div style="display:flex;gap:8px;margin-bottom:16px;background:var(--sf);padding:10px 14px;border-radius:8px;border:0.5px solid var(--bd);align-items:center">
+    <div style="font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:0.04em;margin-right:8px">Channels:</div>
+    <button type="button" class="btn btn-sm channel-tab-btn @(Model.ActiveTab == "email" ? "btn-accent" : "")" id="btn-tab-email" onclick="switchChannel('email')" @(Model.CanViewEmail ? "" : "disabled")>
+        <i class="ti ti-mail" style="font-size:13px"></i>
+        <span>Email (SMTP)</span>
+        <span class="badge @(email?.IsActive == true ? "b-s" : "b-n")" style="font-size:9.5px;margin-left:4px">@(email?.IsActive == true ? "Active" : "Inactive")</span>
+    </button>
+    <button type="button" class="btn btn-sm channel-tab-btn @(Model.ActiveTab == "sms" ? "btn-accent" : "")" id="btn-tab-sms" onclick="switchChannel('sms')" @(Model.CanViewSms ? "" : "disabled")>
+        <i class="ti ti-message-dots" style="font-size:13px"></i>
+        <span>SMS Gateway</span>
+        <span class="badge @(sms?.IsActive == true ? "b-s" : "b-n")" style="font-size:9.5px;margin-left:4px">@(sms?.IsActive == true ? "Active" : "Inactive")</span>
+    </button>
+    <button type="button" class="btn btn-sm channel-tab-btn @(Model.ActiveTab == "whatsapp" ? "btn-accent" : "")" id="btn-tab-whatsapp" onclick="switchChannel('whatsapp')" @(Model.CanViewWhatsApp ? "" : "disabled")>
+        <i class="ti ti-brand-whatsapp" style="font-size:13px"></i>
+        <span>WhatsApp Business</span>
+        <span class="badge @(wa?.IsActive == true ? "b-s" : "b-n")" style="font-size:9.5px;margin-left:4px">@(wa?.IsActive == true ? "Active" : "Inactive")</span>
+    </button>
+</div>
+
+<!-- ========================================================================= -->
+<!-- CHANNEL 1: EMAIL (SMTP) -->
+<!-- ========================================================================= -->
+<div id="channel-pane-email" class="channel-pane" style="display:@(Model.ActiveTab == "email" ? "grid" : "none");grid-template-columns:1.5fr 1fr;gap:16px">
+    <!-- Config Card -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-mail" style="color:var(--ta)"></i>
+                <span>Email SMTP Configuration</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <span class="badge b-p" style="font-size:10px">Provider: @(email?.Provider ?? "SMTP")</span>
+                @if (Model.CanEditEmail)
+                {
+                    <span class="badge b-a" style="font-size:10px"><i class="ti ti-edit"></i> Editable</span>
+                }
+                else
+                {
+                    <span class="badge b-n" style="font-size:10px"><i class="ti ti-lock"></i> View Only</span>
+                }
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="alert-email" style="display:none;margin-bottom:12px"></div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Provider <span class="req">*</span></div>
+                    <select class="form-select" id="email-provider" @(Model.CanEditEmail ? "" : "disabled")>
+                        <option value="SMTP" selected="@(email?.Provider == "SMTP" ? "selected" : null)">Standard SMTP / Microsoft 365 / Gmail</option>
+                        <option value="SendGrid" selected="@(email?.Provider == "SendGrid" ? "selected" : null)">SendGrid</option>
+                        <option value="Mailgun" selected="@(email?.Provider == "Mailgun" ? "selected" : null)">Mailgun</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">SMTP Host Server <span class="req">*</span></div>
+                    <input type="text" class="form-input" id="email-host" value="@(email?.SmtpHost ?? "smtp.office365.com")" placeholder="e.g. smtp.office365.com" @(Model.CanEditEmail ? "" : "disabled")>
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">SMTP Port <span class="req">*</span></div>
+                    <input type="number" class="form-input" id="email-port" value="@(email?.SmtpPort ?? 587)" placeholder="587 or 465" @(Model.CanEditEmail ? "" : "disabled")>
+                    <div class="form-hint">Port 587 (STARTTLS) or Port 465 (SSL/TLS)</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Security Protocol</div>
+                    <div style="display:flex;align-items:center;height:34px;gap:10px">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+                            <input type="checkbox" id="email-ssl" @(email?.EnableSsl != false ? "checked" : "") @(Model.CanEditEmail ? "" : "disabled")>
+                            <span>Enable SSL / TLS / STARTTLS</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Sender Email Address <span class="req">*</span></div>
+                    <input type="email" class="form-input" id="email-sender" value="@(email?.SenderEmail ?? "")" placeholder="notifications@example.com" @(Model.CanEditEmail ? "" : "disabled")>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Sender Display Name</div>
+                    <input type="text" class="form-input" id="email-sender-name" value="@(email?.SenderDisplayName ?? "LegalXML Admin")" placeholder="e.g. LegalXML Admin" @(Model.CanEditEmail ? "" : "disabled")>
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">SMTP Username</div>
+                    <input type="text" class="form-input" id="email-username" value="@(email?.Username ?? "")" placeholder="Username or email address" @(Model.CanEditEmail ? "" : "disabled")>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">SMTP Password / App Password</div>
+                    <div style="position:relative">
+                        <input type="password" class="form-input" id="email-password" placeholder="@(string.IsNullOrEmpty(email?.Password) ? "Enter SMTP password" : "••••••••••••••••")" @(Model.CanEditEmail ? "" : "disabled") style="padding-right:32px">
+                        <i class="ti ti-eye" id="toggle-email-pw" onclick="togglePasswordVisibility('email-password', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--tm);font-size:14px"></i>
+                    </div>
+                    <div class="form-hint">Leave blank to retain existing saved password</div>
+                </div>
+            </div>
+
+            @if (Model.CanEditEmail)
+            {
+                <div style="display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--bd)">
+                    <button type="button" class="btn btn-sm btn-accent" id="btn-save-email" onclick="saveEmailSettings()">
+                        <i class="ti ti-device-floppy" style="font-size:13px"></i>
+                        <span>Save Email Settings</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Live Test Card -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-send" style="color:var(--ta)"></i>
+                <span>Test Email Dispatch</span>
+            </div>
+            <span class="badge b-s" style="font-size:10px">Live SMTP Test</span>
+        </div>
+        <div class="card-body">
+            <div class="info-box" style="margin-bottom:12px">
+                <i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span>Verify SMTP connectivity by sending a real-time test email to any recipient inbox.</span>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Recipient Email <span class="req">*</span></div>
+                <input type="email" class="form-input" id="test-email-to" placeholder="recipient@example.com" value="admin@legalxml.my">
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Subject</div>
+                <input type="text" class="form-input" id="test-email-subject" value="LegalXML — Unified Email Verification Test">
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Message Body (HTML Supported)</div>
+                <textarea class="form-textarea" id="test-email-body" rows="3">Hello,<br><br>This is a live test message confirming that the LegalXML unified Email communication service is configured and functioning correctly.</textarea>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-test-email" onclick="dispatchTestEmail()">
+                    <i class="ti ti-mail-fast" style="font-size:13px"></i>
+                    <span>Send Test Email</span>
+                </button>
+            </div>
+
+            <div id="test-result-email" style="display:none;margin-top:14px;border-radius:6px;padding:10px 12px;font-size:11.5px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- CHANNEL 2: SMS GATEWAY -->
+<!-- ========================================================================= -->
+<div id="channel-pane-sms" class="channel-pane" style="display:@(Model.ActiveTab == "sms" ? "grid" : "none");grid-template-columns:1.5fr 1fr;gap:16px">
+    <!-- Config Card -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-message-dots" style="color:var(--ta)"></i>
+                <span>SMS Gateway Configuration</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <span class="badge b-p" style="font-size:10px">Provider: @(sms?.Provider ?? "Twilio")</span>
+                @if (Model.CanEditSms)
+                {
+                    <span class="badge b-a" style="font-size:10px"><i class="ti ti-edit"></i> Editable</span>
+                }
+                else
+                {
+                    <span class="badge b-n" style="font-size:10px"><i class="ti ti-lock"></i> View Only</span>
+                }
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="alert-sms" style="display:none;margin-bottom:12px"></div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">SMS Provider <span class="req">*</span></div>
+                    <select class="form-select" id="sms-provider" @(Model.CanEditSms ? "" : "disabled")>
+                        <option value="Twilio" selected="@(sms?.Provider == "Twilio" ? "selected" : null)">Twilio REST API</option>
+                        <option value="HttpGateway" selected="@(sms?.Provider == "HttpGateway" ? "selected" : null)">Generic HTTP SMS Gateway</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">API Endpoint URL</div>
+                    <input type="text" class="form-input" id="sms-url" value="@(sms?.ApiUrl ?? "https://api.twilio.com/2010-04-01")" placeholder="https://api.twilio.com/2010-04-01" @(Model.CanEditSms ? "" : "disabled")>
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Account SID <span class="req">*</span></div>
+                    <input type="text" class="form-input" id="sms-sid" value="@(sms?.AccountSid ?? "")" placeholder="e.g. ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" @(Model.CanEditSms ? "" : "disabled")>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Sender ID / Phone Number <span class="req">*</span></div>
+                    <input type="text" class="form-input" id="sms-sender" value="@(sms?.SenderId ?? "")" placeholder="e.g. +15005550006 or LEGALXML" @(Model.CanEditSms ? "" : "disabled")>
+                    <div class="form-hint">E.164 phone number or registered alphanumeric Sender ID</div>
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Auth Token / Secret</div>
+                    <div style="position:relative">
+                        <input type="password" class="form-input" id="sms-token" placeholder="@(string.IsNullOrEmpty(sms?.AuthToken) ? "Enter Auth Token" : "••••••••••••••••")" @(Model.CanEditSms ? "" : "disabled") style="padding-right:32px">
+                        <i class="ti ti-eye" id="toggle-sms-token" onclick="togglePasswordVisibility('sms-token', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--tm);font-size:14px"></i>
+                    </div>
+                    <div class="form-hint">Leave blank to retain existing saved token</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">API Key / Additional Secret</div>
+                    <input type="password" class="form-input" id="sms-apikey" placeholder="@(string.IsNullOrEmpty(sms?.ApiKey) ? "Optional API key" : "••••••••••••••••")" @(Model.CanEditSms ? "" : "disabled")>
+                </div>
+            </div>
+
+            @if (Model.CanEditSms)
+            {
+                <div style="display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--bd)">
+                    <button type="button" class="btn btn-sm btn-accent" id="btn-save-sms" onclick="saveSmsSettings()">
+                        <i class="ti ti-device-floppy" style="font-size:13px"></i>
+                        <span>Save SMS Settings</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Live Test Card -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-send" style="color:var(--ta)"></i>
+                <span>Test SMS Dispatch</span>
+            </div>
+            <span class="badge b-s" style="font-size:10px">Live SMS Test</span>
+        </div>
+        <div class="card-body">
+            <div class="info-box" style="margin-bottom:12px">
+                <i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span>Verify SMS gateway connectivity and balance by sending a test SMS message.</span>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Recipient Mobile Number <span class="req">*</span></div>
+                <input type="tel" class="form-input" id="test-sms-to" placeholder="e.g. +60123456789" value="+60123456789">
+                <div class="form-hint">Include country code (E.164 format, e.g. +6012..., +1...)</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">SMS Message Body</div>
+                <textarea class="form-textarea" id="test-sms-body" rows="3">LegalXML: Your test notification code is 849201. Unified communication service is operational.</textarea>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-test-sms" onclick="dispatchTestSms()">
+                    <i class="ti ti-message-share" style="font-size:13px"></i>
+                    <span>Send Test SMS</span>
+                </button>
+            </div>
+
+            <div id="test-result-sms" style="display:none;margin-top:14px;border-radius:6px;padding:10px 12px;font-size:11.5px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- CHANNEL 3: WHATSAPP BUSINESS -->
+<!-- ========================================================================= -->
+<div id="channel-pane-whatsapp" class="channel-pane" style="display:@(Model.ActiveTab == "whatsapp" ? "grid" : "none");grid-template-columns:1.5fr 1fr;gap:16px">
+    <!-- Config Card -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-brand-whatsapp" style="color:#25D366"></i>
+                <span>WhatsApp Cloud API Configuration</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <span class="badge b-p" style="font-size:10px">Provider: @(wa?.Provider ?? "MetaCloudApi")</span>
+                @if (Model.CanEditWhatsApp)
+                {
+                    <span class="badge b-a" style="font-size:10px"><i class="ti ti-edit"></i> Editable</span>
+                }
+                else
+                {
+                    <span class="badge b-n" style="font-size:10px"><i class="ti ti-lock"></i> View Only</span>
+                }
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="alert-whatsapp" style="display:none;margin-bottom:12px"></div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Provider <span class="req">*</span></div>
+                    <select class="form-select" id="wa-provider" @(Model.CanEditWhatsApp ? "" : "disabled")>
+                        <option value="MetaCloudApi" selected="@(wa?.Provider == "MetaCloudApi" ? "selected" : null)">Meta WhatsApp Cloud API (v19.0)</option>
+                        <option value="TwilioWhatsApp" selected="@(wa?.Provider == "TwilioWhatsApp" ? "selected" : null)">Twilio for WhatsApp</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">API Graph Endpoint URL</div>
+                    <input type="text" class="form-input" id="wa-url" value="@(wa?.ApiUrl ?? "https://graph.facebook.com/v19.0")" placeholder="https://graph.facebook.com/v19.0" @(Model.CanEditWhatsApp ? "" : "disabled")>
+                </div>
+            </div>
+
+            <div class="g2">
+                <div class="form-row">
+                    <div class="form-label">Phone Number ID <span class="req">*</span></div>
+                    <input type="text" class="form-input" id="wa-phone-id" value="@(wa?.PhoneNumberId ?? "")" placeholder="e.g. 109876543210987" @(Model.CanEditWhatsApp ? "" : "disabled")>
+                    <div class="form-hint">From Meta Developer App &gt; WhatsApp &gt; API Setup</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-label">Business Account ID (WABA)</div>
+                    <input type="text" class="form-input" id="wa-waba-id" value="@(wa?.BusinessAccountId ?? "")" placeholder="e.g. 100000000000001" @(Model.CanEditWhatsApp ? "" : "disabled")>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Permanent System User Access Token <span class="req">*</span></div>
+                <div style="position:relative">
+                    <input type="password" class="form-input" id="wa-token" placeholder="@(string.IsNullOrEmpty(wa?.AccessToken) ? "EAAGxxxxxxxxxxxxxxxxxxxx..." : "••••••••••••••••")" @(Model.CanEditWhatsApp ? "" : "disabled") style="padding-right:32px">
+                    <i class="ti ti-eye" id="toggle-wa-token" onclick="togglePasswordVisibility('wa-token', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--tm);font-size:14px"></i>
+                </div>
+                <div class="form-hint">Meta System User Access Token with `whatsapp_business_messaging` and `whatsapp_business_management` permissions. Leave blank to keep existing token.</div>
+            </div>
+
+            @if (Model.CanEditWhatsApp)
+            {
+                <div style="display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--bd)">
+                    <button type="button" class="btn btn-sm btn-accent" id="btn-save-whatsapp" onclick="saveWhatsAppSettings()">
+                        <i class="ti ti-device-floppy" style="font-size:13px"></i>
+                        <span>Save WhatsApp Settings</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Live Test Card -->
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">
+                <i class="ti ti-send" style="color:var(--ta)"></i>
+                <span>Test WhatsApp Dispatch</span>
+            </div>
+            <span class="badge b-s" style="font-size:10px">Live Meta Cloud Test</span>
+        </div>
+        <div class="card-body">
+            <div class="info-box" style="margin-bottom:12px">
+                <i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>
+                <span>Send a live WhatsApp test message via Meta Cloud API v19.0 to verify token validity.</span>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Recipient Mobile Number <span class="req">*</span></div>
+                <input type="tel" class="form-input" id="test-wa-to" placeholder="e.g. +60123456789" value="+60123456789">
+                <div class="form-hint">Must be registered test number or customer number in E.164 format</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-label">Message Body</div>
+                <textarea class="form-textarea" id="test-wa-body" rows="3">LegalXML WhatsApp Test: Your document validation alert is verified. Unified service active.</textarea>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-test-whatsapp" onclick="dispatchTestWhatsApp()">
+                    <i class="ti ti-brand-whatsapp" style="font-size:13px"></i>
+                    <span>Send Test WhatsApp</span>
+                </button>
+            </div>
+
+            <div id="test-result-whatsapp" style="display:none;margin-top:14px;border-radius:6px;padding:10px 12px;font-size:11.5px"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function getCsrfToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    }
+
+    function togglePasswordVisibility(inputId, iconEl) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            iconEl.classList.remove('ti-eye');
+            iconEl.classList.add('ti-eye-off');
+        } else {
+            input.type = 'password';
+            iconEl.classList.remove('ti-eye-off');
+            iconEl.classList.add('ti-eye');
+        }
+    }
+
+    function switchChannel(channel) {
+        ['email', 'sms', 'whatsapp'].forEach(c => {
+            const btn = document.getElementById(`btn-tab-${c}`);
+            const pane = document.getElementById(`channel-pane-${c}`);
+            if (c === channel) {
+                btn?.classList.add('btn-accent');
+                if (pane) pane.style.display = 'grid';
+            } else {
+                btn?.classList.remove('btn-accent');
+                if (pane) pane.style.display = 'none';
+            }
+        });
+        history.replaceState(null, '', `?tab=${channel}`);
+    }
+
+    function showAlert(alertElId, message, isSuccess) {
+        const el = document.getElementById(alertElId);
+        if (!el) return;
+        el.style.display = 'flex';
+        el.className = isSuccess ? 'info-box' : 'warn-box';
+        el.innerHTML = `
+            <i class="ti ${isSuccess ? 'ti-check' : 'ti-alert-circle'}" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>
+            <span>${message}</span>
+        `;
+        setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+    }
+
+    function showTestResult(resultElId, result, isSuccess) {
+        const el = document.getElementById(resultElId);
+        if (!el) return;
+        el.style.display = 'block';
+        el.style.background = isSuccess ? 'var(--bgg)' : 'var(--bgr)';
+        el.style.border = `1px solid ${isSuccess ? 'var(--bdg)' : 'var(--bdr)'}`;
+        el.style.color = isSuccess ? 'var(--tg)' : 'var(--tr)';
+
+        el.innerHTML = `
+            <div style="font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <i class="ti ${isSuccess ? 'ti-circle-check' : 'ti-circle-x'}" style="font-size:14px"></i>
+                <span>${isSuccess ? 'Dispatch Succeeded' : 'Dispatch Failed'}</span>
+            </div>
+            <div><strong>Status:</strong> ${result.success ? 'Success' : 'Error'}</div>
+            <div><strong>Message:</strong> ${result.message || 'No details returned'}</div>
+            ${result.providerMessageId ? `<div><strong>Provider ID:</strong> ${result.providerMessageId}</div>` : ''}
+        `;
+    }
+
+    // 1. SAVE EMAIL SETTINGS
+    async function saveEmailSettings() {
+        const btn = document.getElementById('btn-save-email');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader" style="font-size:13px"></i> Saving...';
+
+        const payload = {
+            provider: document.getElementById('email-provider').value,
+            smtpHost: document.getElementById('email-host').value.trim(),
+            smtpPort: parseInt(document.getElementById('email-port').value || '587'),
+            enableSsl: document.getElementById('email-ssl').checked,
+            senderEmail: document.getElementById('email-sender').value.trim(),
+            senderDisplayName: document.getElementById('email-sender-name').value.trim(),
+            username: document.getElementById('email-username').value.trim(),
+            password: document.getElementById('email-password').value.trim() || null
+        };
+
+        try {
+            const resp = await fetch('/api/v1/communication/settings/email', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showAlert('alert-email', 'Email SMTP settings saved successfully.', true);
+            } else {
+                showAlert('alert-email', data.message || 'Failed to save email settings.', false);
+            }
+        } catch (e) {
+            showAlert('alert-email', 'Network error: ' + e.message, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:13px"></i> <span>Save Email Settings</span>';
+        }
+    }
+
+    // 2. SAVE SMS SETTINGS
+    async function saveSmsSettings() {
+        const btn = document.getElementById('btn-save-sms');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader" style="font-size:13px"></i> Saving...';
+
+        const payload = {
+            provider: document.getElementById('sms-provider').value,
+            apiUrl: document.getElementById('sms-url').value.trim(),
+            accountSid: document.getElementById('sms-sid').value.trim(),
+            senderId: document.getElementById('sms-sender').value.trim(),
+            authToken: document.getElementById('sms-token').value.trim() || null,
+            apiKey: document.getElementById('sms-apikey').value.trim() || null
+        };
+
+        try {
+            const resp = await fetch('/api/v1/communication/settings/sms', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showAlert('alert-sms', 'SMS Gateway settings saved successfully.', true);
+            } else {
+                showAlert('alert-sms', data.message || 'Failed to save SMS settings.', false);
+            }
+        } catch (e) {
+            showAlert('alert-sms', 'Network error: ' + e.message, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:13px"></i> <span>Save SMS Settings</span>';
+        }
+    }
+
+    // 3. SAVE WHATSAPP SETTINGS
+    async function saveWhatsAppSettings() {
+        const btn = document.getElementById('btn-save-whatsapp');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader" style="font-size:13px"></i> Saving...';
+
+        const payload = {
+            provider: document.getElementById('wa-provider').value,
+            apiUrl: document.getElementById('wa-url').value.trim(),
+            phoneNumberId: document.getElementById('wa-phone-id').value.trim(),
+            businessAccountId: document.getElementById('wa-waba-id').value.trim(),
+            accessToken: document.getElementById('wa-token').value.trim() || null
+        };
+
+        try {
+            const resp = await fetch('/api/v1/communication/settings/whatsapp', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showAlert('alert-whatsapp', 'WhatsApp Cloud API settings saved successfully.', true);
+            } else {
+                showAlert('alert-whatsapp', data.message || 'Failed to save WhatsApp settings.', false);
+            }
+        } catch (e) {
+            showAlert('alert-whatsapp', 'Network error: ' + e.message, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:13px"></i> <span>Save WhatsApp Settings</span>';
+        }
+    }
+
+    // 4. TEST EMAIL DISPATCH
+    async function dispatchTestEmail() {
+        const btn = document.getElementById('btn-test-email');
+        const to = document.getElementById('test-email-to').value.trim();
+        if (!to) {
+            alert('Please enter recipient email address.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader" style="font-size:13px"></i> Sending...';
+
+        const payload = {
+            to: to,
+            subject: document.getElementById('test-email-subject').value.trim(),
+            body: document.getElementById('test-email-body').value.trim()
+        };
+
+        try {
+            const resp = await fetch('/api/v1/communication/test/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            showTestResult('test-result-email', result, resp.ok && result.success);
+        } catch (e) {
+            showTestResult('test-result-email', { success: false, message: e.message }, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-mail-fast" style="font-size:13px"></i> <span>Send Test Email</span>';
+        }
+    }
+
+    // 5. TEST SMS DISPATCH
+    async function dispatchTestSms() {
+        const btn = document.getElementById('btn-test-sms');
+        const to = document.getElementById('test-sms-to').value.trim();
+        if (!to) {
+            alert('Please enter recipient mobile number.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader" style="font-size:13px"></i> Sending...';
+
+        const payload = {
+            to: to,
+            body: document.getElementById('test-sms-body').value.trim()
+        };
+
+        try {
+            const resp = await fetch('/api/v1/communication/test/sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            showTestResult('test-result-sms', result, resp.ok && result.success);
+        } catch (e) {
+            showTestResult('test-result-sms', { success: false, message: e.message }, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-message-share" style="font-size:13px"></i> <span>Send Test SMS</span>';
+        }
+    }
+
+    // 6. TEST WHATSAPP DISPATCH
+    async function dispatchTestWhatsApp() {
+        const btn = document.getElementById('btn-test-whatsapp');
+        const to = document.getElementById('test-wa-to').value.trim();
+        if (!to) {
+            alert('Please enter recipient mobile number.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader" style="font-size:13px"></i> Sending...';
+
+        const payload = {
+            to: to,
+            body: document.getElementById('test-wa-body').value.trim()
+        };
+
+        try {
+            const resp = await fetch('/api/v1/communication/test/whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            showTestResult('test-result-whatsapp', result, resp.ok && result.success);
+        } catch (e) {
+            showTestResult('test-result-whatsapp', { success: false, message: e.message }, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-brand-whatsapp" style="font-size:13px"></i> <span>Send Test WhatsApp</span>';
+        }
+    }
+</script>
+}

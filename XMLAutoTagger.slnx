@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="XMLAutoTagger.Application/XMLAutoTagger.Application.csproj" />
+    <Project Path="XMLAutoTagger.Domain/XMLAutoTagger.Domain.csproj" />
+    <Project Path="XMLAutoTagger.Infrastructure/XMLAutoTagger.Infrastructure.csproj" />
+    <Project Path="XMLAutoTagger.WebAPI/XMLAutoTagger.WebAPI.csproj" />
+  </Folder>
+</Solution>
